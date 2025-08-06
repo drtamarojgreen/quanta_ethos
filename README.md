@@ -1,27 +1,38 @@
-# PrismQuanta: The Principled C++ LLM Framework
+# PrismQuanta: The Principled AI Ecosystem
 
-**PrismQuanta** is a C++ framework for building and deploying Large Language Models with a strong emphasis on ethical AI, responsible integration, and self-awareness of the LLM's limitations. It provides a high-performance, scalable, and extensible platform for developing and serving LLM-based applications.
+**PrismQuanta** is a framework for building a cohesive, autonomous, and ethically-governed AI ecosystem from a collection of specialized modules. The system is designed to be local-first, modular, resilient, and to operate under a strict ethical framework.
 
-This project is guided by the **PrismQuanta philosophy**, which prioritizes integrity, safety, and transparency in artificial intelligence. While the vision is expansive, the current implementation is a robust C++ application that serves as a foundation for building ethical AI systems.
+This project is guided by the **PrismQuanta philosophy**, which prioritizes integrity, safety, and transparency in artificial intelligence.
 
-## Features
+## Vision and Guiding Principles
 
-*   **High-Performance C++ Core:** The system is built in C++ for speed and efficiency.
-*   **RESTful API:** A RESTful API for text generation, making it easy to integrate with other applications.
-*   **C++ Library API:** A C++ library API for direct integration into other C++ projects.
-*   **Dockerized Deployment:** The application can be easily deployed using Docker.
-*   **Extensive Documentation:** The project includes comprehensive documentation on its vision, architecture, development, deployment, and more.
-*   **Ethical Framework:** A unique and detailed ethical framework that guides the development and use of the AI.
+The goal of this project is to unify the discrete PrismQuanta modules into a single, cohesive, and autonomous system. The integration will adhere to the project's core philosophies:
+
+-   **Local-First & Offline:** The integrated system must operate without external network dependencies, relying on local resources like `llama.cpp`.
+-   **Modularity & Loose Coupling:** Components must be independently testable and replaceable. Communication should occur over well-defined, simple interfaces.
+-   **Minimalism & Resilience:** Prefer simple, robust technologies (e.g., shell scripts, file-based queues, standard CLI tools) over complex frameworks to ensure stability in constrained environments.
+-   **Ethical Governance:** `QuantaEthos` must be a foundational, non-bypassable layer for all significant actions undertaken by the system.
+
+## High-Level Architecture
+
+The system is organized into layers of responsibility, from high-level strategy to low-level execution. Key components include:
+
+-   **QuantaLista (Strategist):** Manages the master project plan.
+-   **QuantaPorto (Commander):** The tactical controller that translates tasks into executable actions.
+-   **QuantaSensa (Field Agent):** The hands of the system that executes actions.
+-   **QuantaGlia (Librarian):** The knowledge manager responsible for self-improvement.
+-   **QuantaEthos (Conscience):** A mandatory ethical validation service.
+
+For a detailed explanation of the architecture and data flow, please see [`docs/architecture.md`](docs/architecture.md).
 
 ## Getting Started
 
 ### Prerequisites
 
-*   **Operating System:** Linux (Ubuntu 20.04 or later recommended) or macOS.
-*   **Compiler:** A C++17 compliant compiler (e.g., GCC 9 or later, Clang 10 or later).
-*   **Build System:** CMake (version 3.16 or later).
+*   **Operating System:** Linux (Ubuntu 20.04 or later recommended).
+*   **Build Tools:** `g++`, `cmake`, `make`.
+*   **Scripting Environments:** `python3`, `Rscript`.
 *   **Version Control:** Git.
-*   **Package Manager:** None (dependencies must be installed manually).
 
 ### Installation
 
@@ -31,52 +42,32 @@ This project is guided by the **PrismQuanta philosophy**, which prioritizes inte
     cd <project-directory>
     ```
 
-2.  **Build the project:**
+2.  **Configure the environment:**
+    Create a `prismquanta.env` file at the root of the project to define all shared paths (queues, logs, repo locations). All scripts will source this file.
+
+3.  **Build the entire ecosystem:**
+    A top-level `build_all.sh` script orchestrates the build process for all components.
     ```bash
-    mkdir build
-    cd build
-    cmake ..
-    cmake --build .
+    ./build_all.sh
     ```
 
 ## Usage
 
-### Docker Deployment
-
-The easiest way to run the application is with Docker.
-
-1.  **Build the Docker image:**
-    ```bash
-    docker build -t llm-app .
-    ```
-
-2.  **Run the Docker container:**
-    ```bash
-    docker run -p 8080:8080 -d llm-app
-    ```
-    This will start the application and expose the API server on port 8080.
-
-### API
-
-The API is documented in detail in `docs/api_reference.md`. Here is a quick example of how to use the `/v1/generate` endpoint:
+A master control script will launch all necessary components in the correct order.
 
 ```bash
-curl -X POST http://localhost:8080/v1/generate \
--H "Content-Type: application/json" \
--H "Authorization: Bearer <your-api-key>" \
--d '{
-  "prompt": "Hello, world!",
-  "max_tokens": 50
-}'
+./start_system.sh
 ```
 
-## Contributing
+The system uses a file-based queue for communication between components. For details on how to interact with the system (e.g., adding tasks), please refer to the documentation for `QuantaLista`.
 
-We welcome contributions to the project. Please follow these guidelines:
+## Testing
 
-*   **Branching:** Create a new feature branch for your changes (e.g., `feature/my-new-feature`).
-*   **Coding Style:** Adhere to the conventions outlined in the `docs/coding_style.md` document.
-*   **Pull Requests:** Submit a pull request to the `main` branch. Provide a clear description of your changes and reference any related issues.
+A unified testing script will run unit and integration tests for each module.
+
+```bash
+./test_all.sh
+```
 
 ## The PrismQuanta Ethical Framework
 
@@ -87,8 +78,17 @@ This project is not just about technology; it's about building AI that is princi
 *   `docs/integration_policy.md`: Guidelines for responsibly integrating LLMs into a workplace.
 *   `docs/behavior_profile.md`: A guide to understanding the LLM's behavior.
 *   `docs/disclaimer.md`: A disclaimer written from the perspective of the LLM.
+*   `docs/safety_controls.md`: Details on the Human-in-the-Loop (HITL) and safety controls.
 
 We encourage you to read these documents to understand the project's commitment to ethical AI.
+
+## Contributing
+
+We welcome contributions to the project. Please follow these guidelines:
+
+*   **Branching:** Create a new feature branch for your changes (e.g., `feature/my-new-feature`).
+*   **Coding Style:** Adhere to the conventions outlined in the `docs/coding_style.md` document.
+*   **Pull Requests:** Submit a pull request to the `main` branch. Provide a clear description of your changes and reference any related issues.
 
 ## License
 

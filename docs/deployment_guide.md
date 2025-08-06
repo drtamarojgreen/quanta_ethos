@@ -1,68 +1,31 @@
-# Deployment Guide
+# Build and Deployment Strategy
 
-**Version:** 1.0
-**Status:** Draft
+## Unified Build System
 
----
+A top-level `Makefile` or `build_all.sh` script will orchestrate the build process for the entire ecosystem:
+-   Run `cmake` and `make` for all C++ components.
+-   Create Python virtual environments and install dependencies via `pip` for all Python components.
+-   Run `R` dependency installation scripts.
 
-## 1. Introduction
-
-This guide explains how to deploy the C++ LLM application to a production environment. It covers building a release version and deploying using Docker.
-
-## 2. Building for Release
-
-To create an optimized release build, use the following CMake commands:
-
+To build the entire system, run the `build_all.sh` script from the root of the project:
 ```bash
-# Create a build directory
-mkdir build-release
-cd build-release
-
-# Configure the project with CMake for a release build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=[path-to-vcpkg]/scripts/buildsystems/vcpkg.cmake
-
-# Build the project
-cmake --build .
+./build_all.sh
 ```
 
-This will generate a highly optimized executable in the `build-release/` directory.
+## Unified Testing
 
-## 3. Deploying with Docker
+A `test_all.sh` script will run unit and integration tests for each module, using mock components where necessary to ensure isolated and repeatable testing.
 
-We provide a `Dockerfile` to simplify deployment. The `Dockerfile` builds the application in a container and sets up the necessary environment.
-
-### 3.1. Building the Docker Image
-
-To build the Docker image, run the following command from the project root:
-
+To run the test suite, run the `test_all.sh` script from the root of the project:
 ```bash
-docker build -t llm-app .
+./test_all.sh
 ```
 
-### 3.2. Running the Docker Container
+## Master Control Script
 
-To run the application in a Docker container, use the following command:
+A `start_system.sh` script will launch all necessary components in the correct order (e.g., monitoring daemons, `QuantaLista` in a watch loop).
 
+To start the PrismQuanta ecosystem, run the `start_system.sh` script from the root of the project:
 ```bash
-docker run -p 8080:8080 -d llm-app
+./start_system.sh
 ```
-
-This will start the application and expose the API server on port 8080.
-
-## 4. Configuration
-
-The application can be configured using environment variables. The following variables are available:
-
-*   `API_PORT`: The port for the API server to listen on (default: `8080`).
-*   `MODEL_PATH`: The path to the LLM model file (default: `/app/models/model.onnx`).
-*   `LOG_LEVEL`: The logging level (e.g., `info`, `debug`, `error`).
-
-You can set these environment variables when running the Docker container:
-
-```bash
-docker run -p 8080:8080 -e MODEL_PATH=/app/models/my-model.onnx -d llm-app
-```
-
----
-
-*End of Document*

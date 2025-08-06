@@ -21,7 +21,7 @@ This project is guided by the **PrismQuanta philosophy**, which prioritizes inte
 *   **Compiler:** A C++17 compliant compiler (e.g., GCC 9 or later, Clang 10 or later).
 *   **Build System:** CMake (version 3.16 or later).
 *   **Version Control:** Git.
-*   **Package Manager:** vcpkg (for C++ libraries).
+*   **Package Manager:** None (dependencies must be installed manually).
 
 ### Installation
 
@@ -31,19 +31,11 @@ This project is guided by the **PrismQuanta philosophy**, which prioritizes inte
     cd <project-directory>
     ```
 
-2.  **Install dependencies:**
-    ```bash
-    ./vcpkg install onnxruntime
-    ./vcpkg install gtest
-    ./vcpkg install sentencepiece
-    ./vcpkg install restinio
-    ```
-
-3.  **Build the project:**
+2.  **Build the project:**
     ```bash
     mkdir build
     cd build
-    cmake .. -DCMAKE_TOOLCHAIN_FILE=[path-to-vcpkg]/scripts/buildsystems/vcpkg.cmake
+    cmake ..
     cmake --build .
     ```
 

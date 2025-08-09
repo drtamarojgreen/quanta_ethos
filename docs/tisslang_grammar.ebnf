@@ -1,0 +1,38 @@
+(*
+  TissLang: A DSL for the PrismQuanta Ecosystem
+  Version: 0.2
+  Author: Jules
+*)
+
+program = { ws, statement, ws };
+
+statement = directive | pipeline | comment;
+
+(* Directives for controlling the runtime environment *)
+directive = "@", identifier, { ws, value }, ws, EOL;
+
+(* Pipelines define a sequence of operations *)
+pipeline = "pipeline", ws, identifier, ws, "{", ws, EOL, [ { step } ], ws, "}", ws, EOL;
+
+(* A step is a single action in a pipeline *)
+step = ws, ( component_call | pipeline_call ), ws, EOL;
+
+component_call = identifier, ws, "(", ws, [ value, { ws, ",", ws, value } ], ws, ")";
+pipeline_call = "run", ws, identifier;
+
+(* Basic data types *)
+value = string | number | boolean;
+string = '"', { character - '"' }, '"';
+number = [ "-" ], digit, { digit }, [ ".", { digit } ];
+boolean = "true" | "false";
+
+(* Lexical elements *)
+identifier = letter, { letter | digit | "_" | "-" };
+letter = "a"..."z" | "A"..."Z";
+digit = "0"..."9";
+character = ? any unicode character ?;
+comment = "#", { character - EOL }, EOL;
+
+(* Whitespace and End of Line *)
+ws = { " " | "\t" };
+EOL = "\n" | "\r\n" | "\r";

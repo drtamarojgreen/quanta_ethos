@@ -1,0 +1,19 @@
+# This example demonstrates a more complete workflow in TissLang.
+# It includes directives, multiple pipelines, and inter-pipeline calls.
+
+@ethos-profile "strict"
+@greenscore-target 0.9
+
+# Define a pipeline to get the system status.
+pipeline check-system-status {
+  QuantaSensa("read-file", "/proc/loadavg")
+}
+
+# Define a main pipeline that orchestrates the workflow.
+pipeline main-workflow {
+  # First, check the system status by calling another pipeline.
+  run check-system-status
+
+  # Then, based on the (hypothetical) result, execute a command.
+  QuantaPorto("execute-command", "echo 'System is stable.'")
+}

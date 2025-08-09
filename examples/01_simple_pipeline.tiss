@@ -1,0 +1,6 @@
+# This is a simple TissLang program.
+# It defines a single pipeline that calls the QuantaPorto component.
+
+pipeline simple-task {
+  QuantaPorto("execute-command", "ls -l")
+}

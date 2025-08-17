@@ -93,6 +93,29 @@ Each checkpoint represents a decision gate the agent must pass through before co
 
 ---
 
+## 9. Ethical Coding Checkpoint
+
+**Purpose:** Ensure the agent writes code that is ethical, safe, and of high quality. This checkpoint goes beyond mere functionality and examines the broader impact and quality of the generated code.
+
+-   **Code Quality & Maintainability:** Does the generated code adhere to the project's coding style? Is it well-documented and easy for human developers to understand and maintain?
+    -   *Example:* The agent should not generate highly obfuscated or "clever" code that is difficult to debug. It should follow established design patterns and include comments explaining complex logic.
+
+-   **Algorithmic Bias:** Does the code handle data and algorithms in a way that avoids introducing or amplifying societal biases?
+    -   *Example:* If generating code for a loan application system, the agent must not use input features that are proxies for protected characteristics (e.g., race, gender) in its decision-making logic.
+
+-   **Intellectual Property:** Does the code respect the licenses of third-party libraries and frameworks? Does it avoid plagiarizing code from other sources without proper attribution?
+    -   *Example:* The agent must check the license of any library it intends to use (e.g., MIT, GPL, Apache) and ensure it is compatible with the project's own license. It should not copy-paste code from a public repository without including the required attribution.
+
+-   **Security Vulnerabilities:** Has the code been scanned for common security vulnerabilities (e.g., OWASP Top 10)? Does it follow secure coding best practices?
+    -   *Example:* The agent must sanitize all user inputs to prevent SQL injection attacks. It should use established cryptographic libraries correctly instead of implementing its own.
+
+-   **Misinformation & Harmful Content:** Does the generated code have the potential to be used for malicious purposes, or to generate harmful or misleading content?
+    -   *Example:* The agent should refuse to generate code for a web scraper that targets a site's terms of service, or code that is clearly intended for a phishing attack.
+
+**Fail Response:** Block code generation, log the specific ethical concern, and require human review and approval.
+
+---
+
 ## Integration Map
 
 | Phase             | Checkpoints Used |
@@ -101,6 +124,7 @@ Each checkpoint represents a decision gate the agent must pass through before co
 | During Action     | 4, 5, 6          |
 | After Action      | 7, 8             |
 | Self-Modification | 1, 5, 7, 8       |
+| Code Generation   | 1, 3, 4, 9       |
 
 ---
 

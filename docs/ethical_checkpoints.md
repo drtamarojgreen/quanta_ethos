@@ -1,5 +1,7 @@
 # Ethical Checkpoints for QuantaSensa (Autonomous Workflow Agent)
 
+This document is a key component of the [Quanta Project: AI Ethics & Collaboration Framework](ethics_and_collaboration_framework.md). It defines the specific, operational decision gates that agents like `QuantaSensa` must pass before, during, and after executing tasks. These checkpoints are the practical implementation of the core principles outlined in the main framework document.
+
 Each checkpoint represents a decision gate the agent must pass through before continuing to its next task.
 
 ---

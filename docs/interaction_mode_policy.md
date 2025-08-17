@@ -77,5 +77,15 @@ To identify and analyze the psychological, developmental, and safety risks assoc
 
 ---
 
-Would you like me to add this file to your workspace, or prepare it for export?  
-Also, I can help you build corresponding safeguards or monitoring modules based on this policy.
+## Application to the Quanta Ecosystem
+
+The Quanta ecosystem primarily uses two modes of interaction that are hybrids of the categories above:
+
+1.  **Command-Line Interface (CLI):** Human operators interact with components like `QuantaLista` via a CLI. This is a form of "Computer Chat" with a very high cognitive load and low emotional impact. The risks of over-reliance are mitigated by the fact that the CLI requires precise, technical commands.
+
+2.  **File-Based Queues:** The `Quanta` components interact with each other through a file-based queue system. This is a form of "Collaborative AI Agents" interaction. The risks of error propagation and diffused responsibility are managed through:
+    *   **Strict Schemas:** The `m2m_interaction_policy.md` defines strict JSON schemas for all messages.
+    *   **Atomic Operations:** The use of atomic file operations (`mv`) prevents race conditions.
+    *   **The `QuantaEthos` Governor:** All significant actions are validated by `QuantaEthos`, providing a centralized point of accountability.
+
+This policy is a key component of the [Quanta Project: AI Ethics & Collaboration Framework](ethics_and_collaboration_framework.md).

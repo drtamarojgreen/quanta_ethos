@@ -61,13 +61,57 @@ A master control script will launch all necessary components in the correct orde
 
 The system uses a file-based queue for communication between components. For details on how to interact with the system (e.g., adding tasks), please refer to the documentation for `QuantaLista`.
 
-## Testing
+## Building and Testing in C++
 
-A unified testing script will run unit and integration tests for each module.
+This section provides instructions for building and testing the C++ components of the PrismQuanta ecosystem.
 
-```bash
-./test_all.sh
-```
+### Prerequisites
+
+Make sure you have the following build tools installed:
+- `g++`
+- `cmake`
+- `make`
+
+### Building the Application
+
+1.  **Create a build directory:**
+    It is best practice to create a separate build directory to keep the source tree clean.
+    ```bash
+    mkdir build
+    cd build
+    ```
+
+2.  **Configure the build with CMake:**
+    Run `cmake` from the build directory to generate the makefiles.
+    ```bash
+    cmake ..
+    ```
+
+3.  **Compile the code:**
+    Use `make` to compile the C++ source code.
+    ```bash
+    make
+    ```
+    Alternatively, you can use the `--build` option with `cmake`:
+    ```bash
+    cmake --build .
+    ```
+
+### Running Tests
+
+After a successful build, you can run the test suite using `ctest`.
+
+1.  **Navigate to the build directory:**
+    ```bash
+    cd build
+    ```
+
+2.  **Run the tests:**
+    ```bash
+    ctest
+    ```
+
+The top-level `build_all.sh` and `test_all.sh` scripts automate these steps.
 
 ## The PrismQuanta Ethical Framework
 

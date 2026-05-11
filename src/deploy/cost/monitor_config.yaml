@@ -1,0 +1,6 @@
+cost_management:
+  budget_limit: 1000
+  currency: USD
+  alerts:
+    - threshold: 0.8
+      type: percentage

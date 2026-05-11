@@ -1,0 +1,8 @@
+{
+    "compiler": "g++ 13.3.0",
+    "cmake": "3.28.3",
+    "os": "Ubuntu 24.04.1 LTS",
+    "arch": "x86_64",
+    "available_libs": ["dlfcn.h", "std::thread", "std::future"],
+    "sorrel_compliant": true
+}

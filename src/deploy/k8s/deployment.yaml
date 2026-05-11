@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prismquanta
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: prismquanta
+  template:
+    metadata:
+      labels:
+        app: prismquanta
+    spec:
+      containers:
+      - name: prismquanta
+        image: prismquanta:latest
+        ports:
+        - containerPort: 8080

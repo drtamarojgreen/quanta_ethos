@@ -1,9 +1,6 @@
 #include <iostream>
 #include <string>
-#include <nlohmann/json.hpp>
 #include "ethics_logic.h"
-
-using json = nlohmann::json;
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
@@ -32,13 +29,11 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    json response = {
-        {"decision", decision},
-        {"reason", reason},
-        {"trust_score", trust_score}
-    };
-
-    std::cout << response.dump(4) << std::endl;
+    std::cout << "{\n"
+              << "    \"decision\": \"" << decision << "\",\n"
+              << "    \"reason\": \"" << reason << "\",\n"
+              << "    \"trust_score\": " << trust_score << "\n"
+              << "}" << std::endl;
 
     return 0;
 }

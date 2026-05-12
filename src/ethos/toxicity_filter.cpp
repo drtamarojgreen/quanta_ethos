@@ -22,7 +22,7 @@ bool ToxicityFilter::isToxic(const std::string& text) const {
 std::string ToxicityFilter::scrub(const std::string& text) const {
     std::string scrubbed = text;
     for (const auto& word : blocked_words) {
-        std::regex pattern("(?i)" + word);
+        std::regex pattern(word, std::regex_constants::icase);
         scrubbed = std::regex_replace(scrubbed, pattern, "[REDACTED]");
     }
     return scrubbed;

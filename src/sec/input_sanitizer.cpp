@@ -5,9 +5,16 @@ InputSanitizer::InputSanitizer() {}
 
 std::string InputSanitizer::sanitize(const std::string& input) {
     std::string s = input;
-    // Remove potentially dangerous characters for a CLI/shell context
-    s.erase(std::remove(s.begin(), s.end(), ';'), s.end());
-    s.erase(std::remove(s.begin(), s.end(), '`'), s.end());
+
+    const auto command_separator = s.find_first_of(";|&`");
+    if (command_separator != std::string::npos) {
+        s = s.substr(0, command_separator);
+    }
+
+    while (!s.empty() && s.back() == ' ') {
+        s.pop_back();
+    }
+
     return s;
 }
 

@@ -1,0 +1,8 @@
+# Terminal UI Facts
+ui_type = terminal
+layout_style = side_panel
+menu_width_ratio = 0.25
+content_width_ratio = 0.75
+ansi_supported = true
+interface_required = ITerminalView
+subsystems_integrated = CoreEngine,EthicalGov,ModelBackend

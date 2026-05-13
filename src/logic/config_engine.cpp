@@ -33,3 +33,7 @@ float ConfigEngine::getFloat(const std::string& key, float default_val) const {
     auto it = settings.find(key);
     return it != settings.end() ? std::stof(it->second) : default_val;
 }
+
+void ConfigEngine::set(const std::string& key, const std::string& value) {
+    settings[key] = value;
+}

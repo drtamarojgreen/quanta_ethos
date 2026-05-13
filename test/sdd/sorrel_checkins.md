@@ -1,1 +1,12 @@
 # SORREL Checkins
+- [x] Define Restrictions for the Terminal UI.
+- [x] Design the Terminal UI architecture.
+- [x] Implement the side-panel layout.
+- [x] Integrate Core Engine configuration into the UI.
+- [x] Integrate Ethical Governance configuration into the UI.
+- [x] Integrate Model Backend configuration into the UI.
+- [x] Implement configuration editing logic.
+- [x] Implement dynamic UI layout to avoid hardcoded coordinates.
+- [x] Refactor terminal attribute handling for stability.
+- [x] Implement SDD verification card for Terminal UI.
+- [ ] Verify layout proportions empirically (Pending permission to compile).

@@ -17,3 +17,5 @@
 ## Validation Restrictions
 - All validation logic must reference real outputs.
 - 100% test coverage for all new public interfaces.
+- UI Layout Verification: Content start column must be calculated as `(Width / 4) + 2`.
+- Input Verification: Terminal must be restored to `oldt` state before exit.

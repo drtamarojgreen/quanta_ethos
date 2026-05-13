@@ -52,6 +52,7 @@ add_test(NAME prismquanta_bdd_tests COMMAND prismquanta_bdd_tests)
 add_executable(prismquanta_sdd_tests
     test_main.cpp
     sdd/cards/structural_enforcement_detailed.cpp
+    sdd/cards/TerminalUIClass.cpp
 )
 target_include_directories(prismquanta_sdd_tests PRIVATE ${TEST_INCLUDE_DIRS})
 target_link_libraries(prismquanta_sdd_tests PRIVATE prismquanta_lib)

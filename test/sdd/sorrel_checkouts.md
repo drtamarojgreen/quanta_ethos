@@ -56,3 +56,11 @@ The following enhancements and verification systems have been implemented:
 - Regression Tests
 - BDD Scenarios
 - SDD Structural Verification Cards
+
+## New Features (May 2026)
+- [x] Precision Power Terminal UI with Side-Panel Navigation
+- [x] Configuration-driven Interface (`ITerminalView`)
+- [x] Subsystem Management Views (CoreEngine, EthicalGov, ModelBackend)
+- [x] Interactive Configuration Editing (Toggles and Value Switching)
+- [x] Dynamic Layout Engine (ANSI-based, relative proportions)
+- [x] Optimized Terminal Handling (Raw mode, Cursor management)

@@ -64,12 +64,12 @@ private:
 
         checkFuture_ = std::async(std::launch::async, [sanitizedUrl]() {
             std::vector<std::string> results;
-            std::string command = "python3 src/dev/scripts/sdd_checker.py " + sanitizedUrl + " 2>&1";
+            std::string command = "./sorrel check " + sanitizedUrl + " 2>&1";
             std::array<char, 128> buffer;
             std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(command.c_str(), "r"), pclose);
 
             if (!pipe) {
-                results.push_back("Error: Failed to run checker script.");
+                results.push_back("Error: Failed to run sorrel binary.");
                 return results;
             }
 

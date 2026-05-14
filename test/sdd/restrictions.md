@@ -19,3 +19,11 @@
 - 100% test coverage for all new public interfaces.
 - UI Layout Verification: Content start column must be calculated as `(Width / 4) + 2`.
 - Input Verification: Terminal must be restored to `oldt` state before exit.
+
+## Sorrel C++ Checker Restrictions
+- `SddEngine` must be independent of any UI framework.
+- Coverage scanner must support: .cpp, .h, .py, .js, .go, .java, .rs.
+- `ScoringEngine` must load weights and penalties from `data/sdd_scoring_rules.xml`.
+- All TUI components must use ANSI escape codes only (no ncurses).
+- The `sorrel` CLI must be a standalone compiled C++ binary.
+- `SddEngine` must use the SIP principle: minimal execution increments.

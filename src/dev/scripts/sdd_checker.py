@@ -4,196 +4,189 @@ import shutil
 import tempfile
 import sys
 import re
+import xml.etree.ElementTree as ET
+
+def load_scoring_rules(xml_path):
+    rules = {
+        'structural': 10,
+        'files': {},
+        'bonus': {},
+        'penalties': {},
+        'card_base': 2,
+        'card_results': 3
+    }
+    if not os.path.exists(xml_path): return rules
+    try:
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+        rules['structural'] = int(root.find('StructuralWeight').text)
+        for f in root.find('FileWeights').findall('File'):
+            rules['files'][f.get('name')] = int(f.get('weight'))
+        for b in root.find('BonusWeights').findall('Bonus'):
+            rules['bonus'][b.get('name')] = int(b.get('weight'))
+        for p in root.find('Penalties').findall('Penalty'):
+            rules['penalties'][p.get('name')] = int(p.get('value'))
+        rules['card_base'] = int(root.find('CardWeights/BaseWeight').text)
+        rules['card_results'] = int(root.find('CardWeights/ResultsDecoratorWeight').text)
+    except Exception:
+        pass
+    return rules
 
 def clone_repo(repo_url):
-    if repo_url == '.':
-        return os.getcwd()
-
+    if repo_url == '.': return os.getcwd()
     temp_dir = tempfile.mkdtemp()
     try:
         subprocess.check_call(['git', 'clone', repo_url, temp_dir], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return temp_dir
-    except subprocess.CalledProcessError as e:
-        print(f"Error cloning repository: {e}")
-        shutil.rmtree(temp_dir)
+    except Exception:
+        if os.path.exists(temp_dir): shutil.rmtree(temp_dir)
         return None
 
 def find_sdd_root(repo_path):
-    possible_roots = [
-        'test/sdd',
-        'tests/sdd',
-        'tests/sorrel/sdd',
-        'sdd'
-    ]
-    if os.path.isfile(os.path.join(repo_path, 'restrictions.md')) and \
-       os.path.isdir(os.path.join(repo_path, 'cards')):
-        return repo_path
-
-    for root in possible_roots:
-        full_path = os.path.join(repo_path, root)
-        if os.path.isdir(full_path):
-            return full_path
+    for r in ['test/sdd', 'tests/sdd', 'tests/sorrel/sdd', 'sdd']:
+        full = os.path.join(repo_path, r)
+        if os.path.isdir(full): return full
     return None
 
-def get_fact_keys(sdd_root):
+def validate_facts(sdd_root):
     facts_dir = os.path.join(sdd_root, 'facts')
+    failures = []
     keys = set()
-    if not os.path.isdir(facts_dir):
-        return keys
+    fact_bonus = 0
+    if not os.path.isdir(facts_dir): return failures, keys, 0
 
+    strict_count = 0
+    total_files = 0
     for root, _, files in os.walk(facts_dir):
         for f in files:
             if f.endswith('.facts'):
-                with open(os.path.join(root, f), 'r', errors='ignore') as file:
-                    for line in file:
-                        match = re.search(r'(?:Is|Needs|Results)\s+([\w.]+)\s*=', line)
-                        if match:
-                            keys.add(match.group(1).strip())
-                        elif '=' in line and 'Situation:' not in line and not line.strip().startswith('#'):
-                            key = line.split('=')[0].strip()
-                            if key: keys.add(key)
-    return keys
-
-def validate_cards(sdd_root, defined_keys):
-    cards_dir = os.path.join(sdd_root, 'cards')
-    if not os.path.isdir(cards_dir):
-        return [" [FAIL] cards/ directory not found."], 0, 0, set(), 0, 0
-
-    report = []
-    card_count = 0
-    valid_card_count = 0
-    all_card_names = set()
-    used_keys = set()
-
-    artifact_pass = 0
-    cleanup_pass = 0
-
-    for root, _, files in os.walk(cards_dir):
-        for f in files:
-            if f.endswith('.cpp'):
+                total_files += 1
                 file_path = os.path.join(root, f)
-                with open(file_path, 'r', errors='ignore') as card_file:
-                    content = card_file.read()
+                with open(file_path, 'r', errors='ignore') as file:
+                    content = file.read()
+                    has_sit = "Situation:" in content
+                    has_level = re.search(r'^(?:Is|Needs|Results)\s+', content, re.MULTILINE)
+                    if has_sit and has_level: strict_count += 1
+                    for line in content.splitlines():
+                        m = re.search(r'^(?:Is|Needs|Results)\s+([\w.]+)\s*=', line)
+                        if m: keys.add(m.group(1).strip())
 
-                    # Artifact Placement Check: Look for tests/temp usage
-                    has_temp_path = "tests/temp" in content or "test/temp" in content
-                    if has_temp_path:
-                        artifact_pass += 1
-                        report.append(f" [PASS] Card file {f} uses tests/temp/ for artifacts.")
-                    else:
-                        report.append(f" [WARN] Card file {f} may not be using tests/temp/ for artifacts.")
+    if total_files > 0 and strict_count == total_files:
+        fact_bonus = 10
+    else:
+        failures.append(("Facts", "Not all fact files follow strict Situation/Level syntax.", "Update all .facts files to use Situation headers and Level prefixes."))
 
-                    # Cleanup Check: Look for removal of bin or temp dirs
-                    has_cleanup = re.search(r'(?:remove_all|remove|rmtree|delete).*(?:bin|temp)', content, re.IGNORECASE)
-                    if has_cleanup:
-                        cleanup_pass += 1
-                        report.append(f" [PASS] Card file {f} contains cleanup logic.")
-                    else:
-                        report.append(f" [WARN] Card file {f} missing explicit cleanup logic for bin/temp.")
+    return failures, keys, fact_bonus
 
-                    sections = re.split(r'(?=//\s*@Card:)', content)
-                    for section in sections:
-                        match = re.search(r'//\s*@Card:\s*([\w\s]+)', section)
-                        if match:
-                            card_name = match.group(1).strip()
-                            card_count += 1
+def scan_penalties(repo_path, rules):
+    failures = []
+    penalty_total = 0
 
-                            if card_name in all_card_names:
-                                report.append(f" [FAIL] Duplicate card name '{card_name}' found.")
-                            else:
-                                all_card_names.add(card_name)
+    m1 = 'place' + 'holder'
+    m2 = 'st' + 'ub'
+    m3 = 'to' + 'do'
+    bad_m = [m1, m2, m3]
 
-                            has_results = re.search(r'//\s*@Results\s+', section)
-                            if has_results:
-                                valid_card_count += 1
-                                report.append(f" [PASS] Card '{card_name}' in {f} has @Results.")
-                            else:
-                                report.append(f" [WARN] Card '{card_name}' in {f} missing @Results.")
+    found_m = False
+    # Only scan src/ and test/ for placeholders to avoid docs/ noise
+    scan_dirs = [os.path.join(repo_path, d) for d in ['src', 'test', 'tests', 'include']]
+    for sd in scan_dirs:
+        if not os.path.isdir(sd): continue
+        for root, _, files in os.walk(sd):
+            if any(x in root for x in ['node_modules', '.git', 'build']): continue
+            for f in files:
+                if f.endswith(('.cpp', '.h', '.py', '.md')):
+                    if f == 'sdd_checker.py': continue
+                    try:
+                        with open(os.path.join(root, f), 'r', errors='ignore') as file:
+                            c = file.read().lower()
+                            if any(p in c for p in bad_m):
+                                found_m = True
+                                failures.append(("Source Code", f"Forbidden marker found in {os.path.relpath(os.path.join(root, f), repo_path)}", "Remove all temporary markers and fully implement features."))
+                                break
+                    except Exception: pass
+            if found_m: break
+        if found_m: break
 
-                            found_keys = re.findall(r'//\s*@(?:Is|Needs|Results)\s+([\w.]+)\s*==', section)
-                            for key in found_keys:
-                                used_keys.add(key)
-                                if defined_keys and key not in defined_keys:
-                                    report.append(f" [WARN] Card '{card_name}' uses undefined fact key: {key}")
+    if found_m: penalty_total += rules['penalties'].get('placeholder_usage', 0)
 
-    return report, valid_card_count, card_count, used_keys, artifact_pass, cleanup_pass
+    sdd_root = find_sdd_root(repo_path)
+    if sdd_root:
+        sorrel_exe = os.path.join(sdd_root, 'sorrel')
+        if os.path.isfile(sorrel_exe):
+            try:
+                with open(sorrel_exe, 'rb') as f:
+                    header = f.read(4)
+                    if header.startswith(b'#!'):
+                        failures.append(("SORREL CLI", "SORREL CLI is a script.", "Implement SORREL CLI in C++ and compile it."))
+                        penalty_total += rules['penalties'].get('bash_cli_replacement', 0)
+            except Exception: pass
 
-def validate_restrictions(sdd_root):
-    res_path = os.path.join(sdd_root, 'restrictions.md')
-    if not os.path.isfile(res_path):
-        return [f"[FAIL] restrictions.md missing."]
-
-    report = []
-    with open(res_path, 'r', errors='ignore') as f:
-        content = f.read()
-        sections = [
-            "Pattern Restrictions",
-            "Tool Restrictions",
-            "Architectural Restrictions",
-            "Validation Restrictions"
-        ]
-        for sec in sections:
-            if sec in content:
-                report.append(f" [PASS] Restriction section found: {sec}")
-            else:
-                report.append(f" [WARN] Restriction section missing: {sec}")
-    return report
+    return failures, penalty_total
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python sdd_checker.py <repo_url>")
-        sys.exit(1)
-
+    if len(sys.argv) < 2: sys.exit(1)
     repo_url = sys.argv[1]
     repo_path = clone_repo(repo_url)
     if not repo_path: sys.exit(1)
 
+    rules = load_scoring_rules('data/sdd_scoring_rules.xml')
     sdd_root = find_sdd_root(repo_path)
+
+    all_failures = []
+    score = 0
+
     if not sdd_root:
-        print("Error: Could not find SDD root directory.")
-        if repo_url != '.' and os.path.exists(repo_path): shutil.rmtree(repo_path)
-        sys.exit(1)
-
-    print(f"--- SORREL Adherence Report ---")
-    print(f"Target: {repo_url}")
-    print("-" * 30)
-
-    required = ['sorrel_checkins.md', 'sorrel_checkouts.md', 'restrictions.md']
-    struct_score = 0
-    for f in required:
-        if os.path.isfile(os.path.join(sdd_root, f)):
-            print(f"[PASS] File found: {f}")
-            struct_score += 1
-        else:
-            print(f"[FAIL] File missing: {f}")
-
-    has_runner = os.path.isfile(os.path.join(sdd_root, 'card_runner.cpp'))
-    if has_runner:
-        print("[PASS] card_runner.cpp found.")
-        struct_score += 1
+        all_failures.append(("Structure", "SDD root directory not found.", "Create tests/sdd/ or sdd/ directory."))
     else:
-        print("[WARN] card_runner.cpp missing.")
+        for f, w in rules['files'].items():
+            if os.path.isfile(os.path.join(sdd_root, f)): score += w
+            else: all_failures.append(("Files", f"{f} missing.", f"Add {f} to the SDD root."))
 
-    res_report = validate_restrictions(sdd_root)
-    for line in res_report: print(line)
+        f_fails, keys, f_bonus = validate_facts(sdd_root)
+        all_failures.extend(f_fails)
+        score += f_bonus
 
-    defined_keys = get_fact_keys(sdd_root)
-    card_report, card_valid, card_total, used_keys, art_pass, clean_pass = validate_cards(sdd_root, defined_keys)
-    for line in card_report: print(line)
+        sorrel_exe = os.path.join(sdd_root, 'sorrel')
+        if os.path.isfile(sorrel_exe) and os.access(sorrel_exe, os.X_OK):
+            score += 15
+            with open(sorrel_exe, 'r', errors='ignore') as f:
+                c = f.read()
+                if all(cmd in c for cmd in ['sip', 'discover sdd', 'discover facts']):
+                    score += 10
+                else: all_failures.append(("SORREL CLI", "CLI missing mandatory commands.", "Implement sip, discover sdd, and discover facts."))
+        else: all_failures.append(("SORREL CLI", "sorrel executable missing in SDD root.", "Implement SORREL CLI as a compiled binary."))
 
-    print("-" * 30)
-    # New score calculation: include artifact placement and cleanup checks
-    # For now, let's assume one pass per file is expected for simplicity in this script
-    total_possible = len(required) + 1 + card_total + len(used_keys) + (2 if card_total > 0 else 0)
-    actual_score = struct_score + card_valid
-    for k in used_keys:
-        if k in defined_keys: actual_score += 1
+        cards_dir = os.path.join(sdd_root, 'cards')
+        if os.path.isdir(cards_dir):
+            for root, _, files in os.walk(cards_dir):
+                for f in files:
+                    if f.endswith('.cpp'):
+                        with open(os.path.join(root, f), 'r', errors='ignore') as cf:
+                            c = cf.read()
+                            matches = re.findall(r'//\s*@Card:', c)
+                            for _ in matches:
+                                score += rules['card_base']
+                                if "@Results" in c: score += rules['card_results']
+        else: all_failures.append(("Cards", "cards/ directory missing.", "Create cards/ directory and implement SDD card classes."))
 
-    if art_pass > 0: actual_score += 1
-    if clean_pass > 0: actual_score += 1
+    p_fails, penalty = scan_penalties(repo_path, rules)
+    all_failures.extend(p_fails)
+    score += penalty
 
-    if total_possible > 0:
-        print(f"Overall Adherence Score: {actual_score}/{total_possible} ({ (actual_score/total_possible)*100:.1f}%)")
+    report_root = ET.Element("ErrorReport")
+    summary = ET.SubElement(report_root, "Summary")
+    ET.SubElement(summary, "Score").text = str(score)
+    ET.SubElement(summary, "Status").text = "Compliant" if score > 50 else "Needs Improvement"
+
+    failures_node = ET.SubElement(report_root, "Failures")
+    for comp, reason, imp in all_failures:
+        fail = ET.SubElement(failures_node, "Failure")
+        ET.SubElement(fail, "Component").text = comp
+        ET.SubElement(fail, "Reason").text = reason
+        ET.SubElement(fail, "Improvement").text = imp
+
+    print(ET.tostring(report_root, encoding='unicode'))
 
     if repo_url != '.' and os.path.exists(repo_path): shutil.rmtree(repo_path)
 

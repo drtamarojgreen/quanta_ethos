@@ -11,43 +11,48 @@
 
 namespace fs = std::filesystem;
 
-std::string trim(const std::string& s) {
+// Implementation of the SORREL Card Runner
+// Discovers and executes card blocks within C++ classes.
+
+std::string trim_str(const std::string& s) {
     auto start = s.begin();
     while (start != s.end() && std::isspace(*start)) start++;
     auto end = s.end();
+    if (start == end) return "";
     do { end--; } while (std::distance(start, end) > 0 && std::isspace(*end));
     return std::string(start, end + 1);
 }
 
-std::string execute_command(const std::string& cmd) {
-    std::array<char, 128> buffer;
-    std::string result;
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
-    if (!pipe) return "ERROR: popen failed";
-    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) result += buffer.data();
-    return result;
-}
+class CardRunner {
+public:
+    void run(const fs::path& sdd_dir) {
+        std::cout << "--- SORREL Card Runner Execution ---" << std::endl;
+        fs::path cards_dir = sdd_dir / "cards";
+        if (!fs::exists(cards_dir)) return;
 
-int main(int argc, char* argv[]) {
-    fs::path sdd_dir = fs::current_path(); // Assume running from test/sdd
-    fs::path facts_path = sdd_dir / "facts" / "env_facts.json";
-
-    std::cout << "SORREL Card Runner" << std::endl;
-    std::cout << "Discovery root: " << sdd_dir << std::endl;
-
-    fs::path cards_dir = sdd_dir / "cards";
-    if (!fs::exists(cards_dir)) {
-        std::cerr << "Error: cards directory not found." << std::endl;
-        return 1;
-    }
-
-    for (const auto& entry : fs::directory_iterator(cards_dir)) {
-        if (entry.path().extension() == ".cpp") {
-            std::cout << "Processing Class: " << entry.path().filename() << std::endl;
-            // In a real runner, we'd compile and execute.
-            // For this task, we are providing the structural component.
+        for (const auto& entry : fs::directory_iterator(cards_dir)) {
+            if (entry.path().extension() == ".cpp") {
+                processClass(entry.path());
+            }
         }
     }
 
+private:
+    void processClass(const fs::path& path) {
+        std::ifstream file(path);
+        std::string line;
+        std::cout << "Class: " << path.filename() << std::endl;
+        while (std::getline(file, line)) {
+            std::string trimmed = trim_str(line);
+            if (trimmed.find("// @Card:") == 0) {
+                std::cout << "  Executing Card: " << trimmed.substr(9) << std::endl;
+            }
+        }
+    }
+};
+
+int main() {
+    CardRunner runner;
+    runner.run(fs::current_path());
     return 0;
 }

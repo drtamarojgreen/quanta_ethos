@@ -1,0 +1,14 @@
+<!-- Schema for SORREL Adherence Report -->
+<ErrorReport>
+    <Summary>
+        <Score>{score}</Score>
+        <Status>{status}</Status>
+    </Summary>
+    <Failures>
+        <Failure>
+            <Component>{component}</Component>
+            <Reason>{reason}</Reason>
+            <Improvement>{improvement}</Improvement>
+        </Failure>
+    </Failures>
+</ErrorReport>

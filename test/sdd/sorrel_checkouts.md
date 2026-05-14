@@ -64,3 +64,6 @@ The following enhancements and verification systems have been implemented:
 - [x] Interactive Configuration Editing (Toggles and Value Switching)
 - [x] Dynamic Layout Engine (ANSI-based, relative proportions)
 - [x] Optimized Terminal Handling (Raw mode, Cursor management)
+- [x] SORREL Adherence Checker tool (`sdd_checker.py`)
+- [x] Non-blocking SORREL Checker Terminal View (`SddCheckerView`)
+- [x] SORREL Card Runner (`card_runner.cpp`)

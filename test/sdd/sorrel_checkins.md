@@ -9,4 +9,7 @@
 - [x] Implement dynamic UI layout to avoid hardcoded coordinates.
 - [x] Refactor terminal attribute handling for stability.
 - [x] Implement SDD verification card for Terminal UI.
-- [ ] Verify layout proportions empirically (Pending permission to compile).
+- [x] Verify layout proportions empirically.
+- [x] Implement SORREL adherence checker tool.
+- [x] Integrate SORREL checker into Terminal UI.
+- [x] Implement SORREL Card Runner.

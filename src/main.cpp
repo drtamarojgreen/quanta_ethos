@@ -5,6 +5,7 @@
 #include "core_engine.h"
 #include "ux/terminal_ui.h"
 #include "ux/subsystem_views.h"
+#include "ux/sdd_checker_view.h"
 #include "logic/config_engine.h"
 
 int main(int argc, char* argv[]) {
@@ -27,6 +28,7 @@ int main(int argc, char* argv[]) {
     ui.addView(std::make_unique<CoreEngineView>());
     ui.addView(std::make_unique<EthosView>());
     ui.addView(std::make_unique<ModelView>());
+    ui.addView(std::make_unique<SddCheckerView>());
 
     ui.run();
 

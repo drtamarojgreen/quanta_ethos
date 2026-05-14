@@ -113,6 +113,34 @@ After a successful build, you can run the test suite using `ctest`.
 
 The top-level `build_all.sh` and `test_all.sh` scripts automate these steps.
 
+## Sorrel Driven Development (SDD) Tools
+
+PrismQuanta includes a suite of C++ tools for enforcing SDD principles.
+
+### Sorrel CLI (`sorrel`)
+
+The `sorrel` binary is the primary interface for SDD adherence checking and project initialization.
+
+-   `sorrel check <path>`: Evaluates the repository at `<path>` against SDD rules (Facts, Cards, Restrictions, Modularity).
+-   `sorrel init <path>`: Bootstraps a minimal SDD structure in the target repository.
+-   `sorrel coverage <path>`: Performs a regex-based scan to determine SDD card coverage across multiple languages (.cpp, .h, .py, .js, .go, .java, .rs).
+-   `sorrel sip`: Executes a single "Small Incremental Progress" step.
+
+### Installation
+
+Any repository can install the Sorrel tools by running:
+
+```bash
+curl -sSL {this-repository}/install/sorrel_checker.sh | bash
+```
+
+### SDD Scoring and Modularity
+
+The checker uses a rules-based scoring engine (`data/sdd_scoring_rules.xml`). It specifically rewards:
+-   **Strict Fact Syntax**: Use of `Situation:`, `Is`, `Needs`, `Results`.
+-   **Card Coverage**: Implementation of executable cards for all features.
+-   **Modularity**: Logical partitioning into subdirectories and high interface-to-implementation ratios.
+
 ## The PrismQuanta Ethical Framework
 
 This project is not just about technology; it's about building AI that is principled, transparent, and aligned with human values. The ethical framework is a core part of the project and is detailed in the following documents:

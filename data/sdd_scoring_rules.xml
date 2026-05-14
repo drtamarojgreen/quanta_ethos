@@ -10,6 +10,7 @@
         <Bonus name="sorrel_executable" weight="15" description="Executable in tests/sdd/ for SIP commands"/>
         <Bonus name="sip_commands" weight="10" description="Supports sip, discover sdd, discover facts"/>
         <Bonus name="better_fact_structure" weight="10" description="Strict Situation/Level syntax and partitioning"/>
+        <Bonus name="modularity" weight="20" description="High interface-to-implementation ratio and logical partitioning"/>
     </BonusWeights>
     <Penalties>
         <Penalty name="placeholder_usage" value="-20" description="Use of placeholder, stub, or todo in source"/>

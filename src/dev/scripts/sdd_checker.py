@@ -57,7 +57,7 @@ def get_fact_keys(sdd_root):
 def validate_cards(sdd_root, defined_keys):
     cards_dir = os.path.join(sdd_root, 'cards')
     if not os.path.isdir(cards_dir):
-        return [" [FAIL] cards/ directory not found."], 0, 0, set()
+        return [" [FAIL] cards/ directory not found."], 0, 0, set(), 0, 0
 
     report = []
     card_count = 0
@@ -65,12 +65,32 @@ def validate_cards(sdd_root, defined_keys):
     all_card_names = set()
     used_keys = set()
 
+    artifact_pass = 0
+    cleanup_pass = 0
+
     for root, _, files in os.walk(cards_dir):
         for f in files:
             if f.endswith('.cpp'):
                 file_path = os.path.join(root, f)
                 with open(file_path, 'r', errors='ignore') as card_file:
                     content = card_file.read()
+
+                    # Artifact Placement Check: Look for tests/temp usage
+                    has_temp_path = "tests/temp" in content or "test/temp" in content
+                    if has_temp_path:
+                        artifact_pass += 1
+                        report.append(f" [PASS] Card file {f} uses tests/temp/ for artifacts.")
+                    else:
+                        report.append(f" [WARN] Card file {f} may not be using tests/temp/ for artifacts.")
+
+                    # Cleanup Check: Look for removal of bin or temp dirs
+                    has_cleanup = re.search(r'(?:remove_all|remove|rmtree|delete).*(?:bin|temp)', content, re.IGNORECASE)
+                    if has_cleanup:
+                        cleanup_pass += 1
+                        report.append(f" [PASS] Card file {f} contains cleanup logic.")
+                    else:
+                        report.append(f" [WARN] Card file {f} missing explicit cleanup logic for bin/temp.")
+
                     sections = re.split(r'(?=//\s*@Card:)', content)
                     for section in sections:
                         match = re.search(r'//\s*@Card:\s*([\w\s]+)', section)
@@ -90,14 +110,13 @@ def validate_cards(sdd_root, defined_keys):
                             else:
                                 report.append(f" [WARN] Card '{card_name}' in {f} missing @Results.")
 
-                            # Extract used keys
                             found_keys = re.findall(r'//\s*@(?:Is|Needs|Results)\s+([\w.]+)\s*==', section)
                             for key in found_keys:
                                 used_keys.add(key)
                                 if defined_keys and key not in defined_keys:
                                     report.append(f" [WARN] Card '{card_name}' uses undefined fact key: {key}")
 
-    return report, valid_card_count, card_count, used_keys
+    return report, valid_card_count, card_count, used_keys, artifact_pass, cleanup_pass
 
 def validate_restrictions(sdd_root):
     res_path = os.path.join(sdd_root, 'restrictions.md')
@@ -139,7 +158,6 @@ def main():
     print(f"Target: {repo_url}")
     print("-" * 30)
 
-    # 1. Structural Check
     required = ['sorrel_checkins.md', 'sorrel_checkouts.md', 'restrictions.md']
     struct_score = 0
     for f in required:
@@ -149,29 +167,30 @@ def main():
         else:
             print(f"[FAIL] File missing: {f}")
 
-    # Check for card_runner.cpp
     has_runner = os.path.isfile(os.path.join(sdd_root, 'card_runner.cpp'))
     if has_runner:
         print("[PASS] card_runner.cpp found.")
         struct_score += 1
     else:
-        print("[WARN] card_runner.cpp missing (required for full Sorrel autonomy).")
+        print("[WARN] card_runner.cpp missing.")
 
-    # 2. Restrictions Check
     res_report = validate_restrictions(sdd_root)
     for line in res_report: print(line)
 
-    # 3. Facts and Cards Check
     defined_keys = get_fact_keys(sdd_root)
-    card_report, card_valid, card_total, used_keys = validate_cards(sdd_root, defined_keys)
+    card_report, card_valid, card_total, used_keys, art_pass, clean_pass = validate_cards(sdd_root, defined_keys)
     for line in card_report: print(line)
 
     print("-" * 30)
-    total_possible = len(required) + 1 + card_total + len(used_keys)
+    # New score calculation: include artifact placement and cleanup checks
+    # For now, let's assume one pass per file is expected for simplicity in this script
+    total_possible = len(required) + 1 + card_total + len(used_keys) + (2 if card_total > 0 else 0)
     actual_score = struct_score + card_valid
-    # Add score for validated keys
     for k in used_keys:
         if k in defined_keys: actual_score += 1
+
+    if art_pass > 0: actual_score += 1
+    if clean_pass > 0: actual_score += 1
 
     if total_possible > 0:
         print(f"Overall Adherence Score: {actual_score}/{total_possible} ({ (actual_score/total_possible)*100:.1f}%)")

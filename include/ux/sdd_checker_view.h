@@ -14,6 +14,9 @@
 class SddCheckerView : public ITerminalView {
 public:
     std::string getTitle() const override { return "Sorrel Checker"; }
+    bool isVisible(const ConfigEngine& config) const override {
+        return config.get("view.sorrel_checker.visible", "true") == "true";
+    }
 
     void render(const ConfigEngine& config, int startCol) const override {
         std::cout << "\033[1mSORREL Adherence Checker\033[0m\n";

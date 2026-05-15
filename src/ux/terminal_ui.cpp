@@ -15,6 +15,7 @@
 
 TerminalUI::TerminalUI(ConfigEngine& config) : config_(config) {
     loadExplanations();
+    updateTheme();
 }
 
 void TerminalUI::addView(std::unique_ptr<ITerminalView> view) {
@@ -37,27 +38,56 @@ void TerminalUI::loadExplanations() {
     }
 }
 
+void TerminalUI::updateTheme() {
+    std::string theme = config_.get("ui.theme", "default");
+    if (theme == "emerald") {
+        colorHeader_ = "\033[1;37;42m";
+        colorActive_ = "\033[1;30;46m";
+        colorAccent_ = "\033[1;32m";
+    } else if (theme == "amber") {
+        colorHeader_ = "\033[1;30;43m";
+        colorActive_ = "\033[1;37;41m";
+        colorAccent_ = "\033[1;33m";
+    } else { // default
+        colorHeader_ = "\033[1;37;44m";
+        colorActive_ = "\033[1;30;47m";
+        colorAccent_ = "\033[1;34m";
+    }
+}
+
 void TerminalUI::drawLayout() {
+    updateTheme();
     // Clear screen
     std::cout << "\033[2J\033[H";
 
     // Draw header
-    std::cout << "\033[1;37;44m PrismQuanta System Configuration \033[0m\n";
+    std::cout << colorHeader_ << " PrismQuanta System Configuration \033[0m\n";
 
     int height = 20;
     int width = 80;
-    int menuWidth = 16;
-    int contentWidth = 34;
+    int menuWidth = 20; // 25% of 80
+    int contentWidth = 30;
     int explanationWidth = 30;
+
+    std::vector<ITerminalView*> visibleViews;
+    for (auto& v : views_) {
+        if (v->isVisible(config_)) {
+            visibleViews.push_back(v.get());
+        }
+    }
+
+    if (activeViewIndex_ >= (int)visibleViews.size()) {
+        activeViewIndex_ = visibleViews.empty() ? 0 : (int)visibleViews.size() - 1;
+    }
 
     // Draw Layout Lines and Menu
     for (int i = 0; i < height; ++i) {
         std::cout << "\033[" << (i + 2) << ";1H\033[K";
-        if (i < (int)views_.size()) {
+        if (i < (int)visibleViews.size()) {
             if (i == activeViewIndex_) {
-                std::cout << "\033[1;30;47m > " << views_[i]->getTitle() << " \033[0m";
+                std::cout << colorActive_ << " > " << visibleViews[i]->getTitle() << " \033[0m";
             } else {
-                std::cout << "   " << views_[i]->getTitle();
+                std::cout << "   " << visibleViews[i]->getTitle();
             }
         }
         std::cout << "\033[" << (i + 2) << ";" << menuWidth << "H|";
@@ -65,16 +95,16 @@ void TerminalUI::drawLayout() {
     }
 
     // Render Middle Panel (Content)
-    if (!views_.empty() && activeViewIndex_ < (int)views_.size()) {
+    if (!visibleViews.empty()) {
         std::cout << "\033[2;" << (menuWidth + 2) << "H";
-        views_[activeViewIndex_]->render(config_, menuWidth + 2);
+        visibleViews[activeViewIndex_]->render(config_, menuWidth + 2);
 
         // Render Right Panel (Explanation)
-        std::string title = views_[activeViewIndex_]->getTitle();
+        std::string title = visibleViews[activeViewIndex_]->getTitle();
         if (explanations_.count(title)) {
             std::string exp = explanations_[title];
             int expCol = menuWidth + contentWidth + 2;
-            std::cout << "\033[2;" << expCol << "H\033[1mExplanation:\033[0m";
+            std::cout << "\033[2;" << expCol << "H" << colorAccent_ << "\033[1mExplanation:\033[0m";
             
             // Simple word wrap for explanation
             int line = 4;
@@ -97,7 +127,7 @@ void TerminalUI::drawLayout() {
         }
     }
 
-    std::cout << "\033[" << (height + 2) << ";1H\033[1;37;44m [Arrows] Navigate | [Q] Quit \033[0m" << std::flush;
+    std::cout << "\033[" << (height + 2) << ";1H" << colorHeader_ << " [Arrows] Navigate | [Q] Quit \033[0m" << std::flush;
 }
 
 void TerminalUI::handleInput() {
@@ -107,6 +137,13 @@ void TerminalUI::handleInput() {
     int ch = getchar();
 #endif
 
+    std::vector<ITerminalView*> visibleViews;
+    for (auto& v : views_) {
+        if (v->isVisible(config_)) {
+            visibleViews.push_back(v.get());
+        }
+    }
+
     if (ch == 'q' || ch == 'Q') {
         running_ = false;
     } else if (ch == '\033' || ch == 224) { // ESC or arrow prefix on Windows
@@ -115,7 +152,7 @@ void TerminalUI::handleInput() {
         if (ch == 224) { // Arrow keys
              switch(next) {
                 case 72: if (activeViewIndex_ > 0) activeViewIndex_--; break; // Up
-                case 80: if (activeViewIndex_ < (int)views_.size() - 1) activeViewIndex_++; break; // Down
+                case 80: if (activeViewIndex_ < (int)visibleViews.size() - 1) activeViewIndex_++; break; // Down
             }
         }
 #else
@@ -123,12 +160,12 @@ void TerminalUI::handleInput() {
         if (next == '[') {
             switch(getchar()) {
                 case 'A': if (activeViewIndex_ > 0) activeViewIndex_--; break;
-                case 'B': if (activeViewIndex_ < (int)views_.size() - 1) activeViewIndex_++; break;
+                case 'B': if (activeViewIndex_ < (int)visibleViews.size() - 1) activeViewIndex_++; break;
             }
         }
 #endif
-    } else if (!views_.empty()) {
-        views_[activeViewIndex_]->handleInput(ch, config_);
+    } else if (!visibleViews.empty() && activeViewIndex_ < (int)visibleViews.size()) {
+        visibleViews[activeViewIndex_]->handleInput(ch, config_);
     }
 }
 

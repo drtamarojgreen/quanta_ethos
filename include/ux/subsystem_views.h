@@ -6,6 +6,9 @@
 class CoreEngineView : public ITerminalView {
 public:
     std::string getTitle() const override { return "Core Engine"; }
+    bool isVisible(const ConfigEngine& config) const override {
+        return config.get("view.core_engine.visible", "true") == "true";
+    }
     void render(const ConfigEngine& config, int startCol) const override {
         std::cout << "\033[1mCore Engine Settings\033[0m\n";
         std::cout << "\033[2;" << startCol << "H1. Model Path: " << config.get("engine.model_path", "prismquanta_v1.bin") << "\n";
@@ -27,6 +30,9 @@ public:
 class EthosView : public ITerminalView {
 public:
     std::string getTitle() const override { return "Ethical Gov"; }
+    bool isVisible(const ConfigEngine& config) const override {
+        return config.get("view.ethos.visible", "true") == "true";
+    }
     void render(const ConfigEngine& config, int startCol) const override {
         std::cout << "\033[1mEthical Governance\033[0m\n";
         std::cout << "\033[2;" << startCol << "H- Toxicity Filter: [" << config.get("ethos.toxicity_filter", "ENABLED") << "]\n";
@@ -48,6 +54,9 @@ public:
 class ModelView : public ITerminalView {
 public:
     std::string getTitle() const override { return "Model Backend"; }
+    bool isVisible(const ConfigEngine& config) const override {
+        return config.get("view.model_backend.visible", "true") == "true";
+    }
     void render(const ConfigEngine& config, int startCol) const override {
         std::cout << "\033[1mModel Backend Config\033[0m\n";
         std::cout << "\033[2;" << startCol << "H- Backend: " << config.get("model.backend", "llama.cpp") << "\n";

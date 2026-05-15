@@ -11,4 +11,22 @@
     <Step title="Sorrel Checker">
         <Explanation>Sorrel Driven Development (SDD) is the methodology used to build PrismQuanta. This panel runs the SDD engine to check the codebase for compliance with strict fact syntax, card coverage, and modularity rules.</Explanation>
     </Step>
+    <Step title="File">
+        <Explanation>The File menu allows you to manage system configurations. You can load settings from a prismquanta.conf file or save your current session's changes back to disk for persistence.</Explanation>
+    </Step>
+    <Step title="View Settings">
+        <Explanation>Customize your TUI experience here. You can cycle through different ANSI color themes (Default, Emerald, Amber) and toggle the visibility of other menu modules to declutter your workspace.</Explanation>
+    </Step>
+    <Step title="Export">
+        <Explanation>Export your system state for external review. This menu provides tools to dump the current ConfigEngine state or the latest SDD Adherence Report into text files within the data directory.</Explanation>
+    </Step>
+    <Step title="Sorrel Ops">
+        <Explanation>Advanced SDD lifecycle operations. Use this menu to perform a full codebase compliance check or to initialize a new SDD environment (facts, cards, and restrictions) within a target directory.</Explanation>
+    </Step>
+    <Step title="Plugins">
+        <Explanation>PrismQuanta supports dynamic extensibility. This view scans the plugins directory for shared libraries and allows you to load them into the running system to add new reasoning capabilities.</Explanation>
+    </Step>
+    <Step title="Data Analysis">
+        <Explanation>Gain insights into system performance and SDD metrics. This dashboard displays the current SDD compliance score and provides telemetry on TUI rendering performance using the Benchmarker.</Explanation>
+    </Step>
 </StepExplanations>

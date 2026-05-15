@@ -9,4 +9,5 @@ public:
     virtual void render(const ConfigEngine& config, int startCol) const = 0;
     virtual void handleInput(int input, ConfigEngine& config) = 0;
     virtual std::string getTitle() const = 0;
+    virtual bool isVisible(const ConfigEngine& config) const = 0;
 };

@@ -1,0 +1,14 @@
+<StepExplanations>
+    <Step title="Core Engine">
+        <Explanation>The Core Engine is the heart of PrismQuanta. it manages the primary AI reasoning loops, processes high-level PQL commands, and coordinates between all other subsystems. In this view, you can monitor the engine's real-time generation and token usage.</Explanation>
+    </Step>
+    <Step title="Ethical Gov">
+        <Explanation>QuantaEthos provides a non-bypassable ethical validation layer. Every proposed action is reviewed against toxicity filters, bias scanners, and PII redactors. This view shows the current trust score and the results of the most recent safety checks.</Explanation>
+    </Step>
+    <Step title="Model Backend">
+        <Explanation>This view manages the connection to local LLM backends (like llama.cpp). It handles quantization settings, hardware acceleration (CUDA/Metal), and context window management to ensure optimal performance on local hardware.</Explanation>
+    </Step>
+    <Step title="Sorrel Checker">
+        <Explanation>Sorrel Driven Development (SDD) is the methodology used to build PrismQuanta. This panel runs the SDD engine to check the codebase for compliance with strict fact syntax, card coverage, and modularity rules.</Explanation>
+    </Step>
+</StepExplanations>

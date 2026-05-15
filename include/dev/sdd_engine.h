@@ -51,10 +51,17 @@ private:
 
     std::map<std::string, int> fileWeights_;
     std::map<std::string, int> bonusWeights_;
-    std::map<std::string, int> penalties_;
+    std::map<std::string, int> markerPenalties_;
+    std::vector<std::string> scanDirs_;
+    std::vector<std::string> sddRootPaths_;
+    std::vector<std::string> scanExtensions_;
+    std::vector<std::string> ignoredModularityDirs_;
+    
     int structuralWeight_ = 10;
     int cardBaseWeight_ = 2;
     int cardResultsWeight_ = 3;
+    int minSubdirs_ = 3;
+    float minInterfaceRatio_ = 0.8f;
 
     void loadScoringRules();
 };

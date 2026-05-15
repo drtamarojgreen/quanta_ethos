@@ -1,21 +1,61 @@
 <SddScoringRules>
     <StructuralWeight>10</StructuralWeight>
+    
+    <!-- Paths to look for the SDD directory -->
+    <SddRootPaths>
+        <Path name="test/sdd"/>
+        <Path name="tests/sdd"/>
+        <Path name="tests/sorrel/sdd"/>
+        <Path name="sdd"/>
+    </SddRootPaths>
+
+    <!-- Required files in SDD root -->
     <FileWeights>
         <File name="sorrel_checkins.md" weight="5"/>
         <File name="sorrel_checkouts.md" weight="5"/>
         <File name="restrictions.md" weight="10"/>
         <File name="card_runner.cpp" weight="5"/>
     </FileWeights>
+    
     <BonusWeights>
         <Bonus name="sorrel_executable" weight="15" description="Executable in tests/sdd/ for SIP commands"/>
         <Bonus name="sip_commands" weight="10" description="Supports sip, discover sdd, discover facts"/>
         <Bonus name="better_fact_structure" weight="10" description="Strict Situation/Level syntax and partitioning"/>
         <Bonus name="modularity" weight="20" description="High interface-to-implementation ratio and logical partitioning"/>
     </BonusWeights>
-    <Penalties>
-        <Penalty name="placeholder_usage" value="-20" description="Use of placeholder, stub, or todo in source"/>
-        <Penalty name="bash_cli_replacement" value="-15" description="Using bash script instead of C++ for SORREL CLI"/>
-    </Penalties>
+
+    <!-- Scanning for bad practices -->
+    <PenaltyRules>
+        <ScanDirs>
+            <Dir name="src"/>
+            <Dir name="test"/>
+            <Dir name="tests"/>
+            <Dir name="include"/>
+        </ScanDirs>
+        <ForbiddenMarkers>
+            <Marker name="placeholder" penalty="-20"/>
+            <Marker name="stub" penalty="-10"/>
+            <Marker name="todo" penalty="-5"/>
+        </ForbiddenMarkers>
+        <FileExtensions>
+            <Ext name=".cpp"/>
+            <Ext name=".h"/>
+            <Ext name=".py"/>
+            <Ext name=".md"/>
+        </FileExtensions>
+    </PenaltyRules>
+
+    <!-- Modularity thresholds -->
+    <ModularityRules>
+        <MinSubdirs>3</MinSubdirs>
+        <MinInterfaceRatio>0.8</MinInterfaceRatio>
+        <IgnoredDirs>
+            <Dir name="build"/>
+            <Dir name="node_modules"/>
+            <Dir name=".git"/>
+        </IgnoredDirs>
+    </ModularityRules>
+
     <CardWeights>
         <BaseWeight>2</BaseWeight>
         <ResultsDecoratorWeight>3</ResultsDecoratorWeight>

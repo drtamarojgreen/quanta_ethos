@@ -27,7 +27,7 @@ void SddReportView::render(const ConfigEngine& config, int startCol) const {
     std::cout << "\033[20;" << startCol << "H[Up/Down] Scroll | [Esc] Back";
 }
 
-void SddReportView::handleInput(int input, ConfigEngine& config) override {
+void SddReportView::handleInput(int input, ConfigEngine& config) {
     if (input == 27) { // Simplified Esc
         // Handled by UI controller to pop view
     } else if (input == 65) { // Up

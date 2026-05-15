@@ -27,91 +27,86 @@ For a detailed explanation of the architecture and data flow, please see [`docs/
 
 ## Getting Started
 
-### Prerequisites
+PrismQuanta is designed to be platform-independent. The recommended build tool is **CMake**.
 
-*   **Operating System:** Linux (Ubuntu 20.04 or later recommended).
-*   **Build Tools:** `g++`, `cmake`, `make`.
-*   **Scripting Environments:** `python3`, `Rscript`.
-*   **Version Control:** Git.
+### 1. Prerequisites
 
-### Installation
+*   **Compiler:** A C++17 compliant compiler (e.g., `g++` 9+, `clang` 10+, or MSVC 2019+).
+*   **Build System:** `CMake` 3.16 or later.
+*   **Tools (Optional):** `Ninja` or `Make`.
 
-1.  **Clone the repository:**
-    ```bash
-    git clone <repository-url>
-    cd <project-directory>
-    ```
+### 2. Build Instructions (Cross-Platform)
 
-2.  **Configure the environment:**
-    Create a `prismquanta.env` file at the root of the project to define all shared paths (queues, logs, repo locations). All scripts will source this file.
-
-3.  **Build the entire ecosystem:**
-    A top-level `build_all.sh` script orchestrates the build process for all components.
-    ```bash
-    ./build_all.sh
-    ```
-
-## Usage
-
-A master control script will launch all necessary components in the correct order.
+The following commands work in any terminal (Bash, PowerShell, Command Prompt):
 
 ```bash
-./start_system.sh
+# 1. Create and enter a build directory
+cmake -B build
+
+# 2. Setup the environment (directories and .env)
+cmake --build build --target setup
+
+# 3. Build the entire ecosystem
+cmake --build build
+
+# 4. Run tests
+cmake --build build --target test_integration
 ```
 
-The system uses a file-based queue for communication between components. For details on how to interact with the system (e.g., adding tasks), please refer to the documentation for `QuantaLista`.
+### 3. Cleaning the Build
 
-## Building and Testing in C++
+To remove build artifacts and start fresh:
 
-This section provides instructions for building and testing the C++ components of the PrismQuanta ecosystem.
+#### Using CMake
+```bash
+cmake --build build --target clean
+```
 
-### Prerequisites
+#### Manual Cleanup
+*   **Linux/macOS:** `rm -rf build/*`
+*   **Windows (PowerShell):** `Remove-Item -Recurse -Force build/*`
 
-Make sure you have the following build tools installed:
-- `g++`
-- `cmake`
-- `make`
+### 3. Native g++ Instructions
 
-### Building the Application
+If you prefer to use `g++` directly (e.g., if CMake is not available), you can compile the tools manually from the root directory:
 
-1.  **Create a build directory:**
-    It is best practice to create a separate build directory to keep the source tree clean.
+#### Standalone Ethical Validator (`quanta_ethos`)
+*   **Linux:** `g++ -std=c++17 -Iinclude src/QuantaEthos/main.cpp src/QuantaEthos/ethics_logic.cpp -o quanta_ethos`
+*   **Windows:** `g++ -std=c++17 -Iinclude src/QuantaEthos/main.cpp src/QuantaEthos/ethics_logic.cpp -o quanta_ethos.exe`
+
+#### Main Application with UI (`prismquanta`)
+This requires compiling the core library and the UI components together.
+*   **Linux:**
     ```bash
-    mkdir build
-    cd build
+    g++ -std=c++17 -Iinclude -Isrc/QuantaEthos \
+        src/main.cpp src/core_engine.cpp \
+        src/logic/*.cpp src/ux/*.cpp src/dev/sdd_engine.cpp \
+        src/QuantaEthos/ethics_logic.cpp \
+        -o prismquanta
+    ```
+*   **Windows:**
+    ```powershell
+    g++ -std=c++17 -Iinclude -Isrc/QuantaEthos `
+        src/main.cpp src/core_engine.cpp `
+        src/logic/*.cpp src/ux/*.cpp src/dev/sdd_engine.cpp `
+        src/QuantaEthos/ethics_logic.cpp `
+        -o prismquanta.exe
     ```
 
-2.  **Configure the build with CMake:**
-    Run `cmake` from the build directory to generate the makefiles.
-    ```bash
-    cmake ..
-    ```
+## Troubleshooting & Alternatives
 
-3.  **Compile the code:**
-    Use `make` to compile the C++ source code.
-    ```bash
-    make
-    ```
-    Alternatively, you can use the `--build` option with `cmake`:
-    ```bash
-    cmake --build .
-    ```
+### Missing CMake
+If `cmake` is missing, use the **Native g++ Instructions** above. We recommend installing CMake from [cmake.org](https://cmake.org/download/) for easier management of the full ecosystem.
 
-### Running Tests
+### Missing g++ / MinGW (Windows)
+If you don't have a compiler, we recommend installing [MSYS2](https://www.msys2.org/) and running `pacman -S mingw-w64-x86_64-toolchain` to get a complete C++ environment.
 
-After a successful build, you can run the test suite using `ctest`.
+### "src\prismquanta.exe" Error in PowerShell
+If you see an error about a "module 'src' could not be loaded", it is because PowerShell is misinterpreting the path. Always run local executables with the `.\` prefix:
+`.\build\src\prismquanta.exe`
 
-1.  **Navigate to the build directory:**
-    ```bash
-    cd build
-    ```
-
-2.  **Run the tests:**
-    ```bash
-    ctest
-    ```
-
-The top-level `build_all.sh` and `test_all.sh` scripts automate these steps.
+### Legacy Scripts
+The `.sh` scripts (`build_all.sh`, `test_all.sh`, `start_system.sh`) are now deprecated in favor of the CMake-driven workflow. They are maintained for POSIX-compliant environments but may not work natively on Windows.
 
 ## Sorrel Driven Development (SDD) Tools
 
@@ -119,12 +114,19 @@ PrismQuanta includes a suite of C++ tools for enforcing SDD principles.
 
 ### Sorrel CLI (`sorrel`)
 
-The `sorrel` binary is the primary interface for SDD adherence checking and project initialization.
+The `sorrel` binary is the primary interface for SDD adherence checking and project initialization. Build it first using `cmake --build build --target sorrel`.
 
--   `sorrel check <path>`: Evaluates the repository at `<path>` against SDD rules (Facts, Cards, Restrictions, Modularity).
--   `sorrel init <path>`: Bootstraps a minimal SDD structure in the target repository.
--   `sorrel coverage <path>`: Performs a regex-based scan to determine SDD card coverage across multiple languages (.cpp, .h, .py, .js, .go, .java, .rs).
--   `sorrel sip`: Executes a single "Small Incremental Progress" step.
+#### Commands (Windows)
+*   `.\build\sorrel.exe check .` : Evaluates the repository against SDD rules.
+*   `.\build\sorrel.exe init <path>` : Bootstraps a minimal SDD structure.
+*   `.\build\sorrel.exe coverage .` : Scans for `@Card` coverage in source files.
+*   `.\build\sorrel.exe sip` : Executes a "Small Incremental Progress" step.
+
+#### Commands (Linux)
+*   `./build/sorrel check .`
+*   `./build/sorrel init <path>`
+*   `./build/sorrel coverage .`
+*   `./build/sorrel sip`
 
 ### Installation
 

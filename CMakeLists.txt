@@ -14,5 +14,22 @@ add_executable(sorrel
 )
 target_include_directories(sorrel PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
+# Project setup target
+add_custom_target(setup
+    COMMAND ${CMAKE_COMMAND} -E make_directory queue/pending queue/in_progress queue/completed queue/failed queue/human_approval
+    COMMAND ${CMAKE_COMMAND} -E make_directory actions/pending actions/in_progress actions/failed
+    COMMAND ${CMAKE_COMMAND} -E make_directory logs
+    COMMAND ${CMAKE_COMMAND} -E make_directory bin
+    COMMAND ${CMAKE_COMMAND} -E touch prismquanta.env
+    COMMENT "Setting up project directory structure and environment..."
+)
+
 enable_testing()
 add_subdirectory(test)
+
+# Integration test target
+add_custom_target(test_integration
+    COMMAND ${CMAKE_CTEST_COMMAND} -C $<CONFIG> --output-on-failure
+    DEPENDS prismquanta quanta_ethos sorrel
+    COMMENT "Running all tests via CTest..."
+)

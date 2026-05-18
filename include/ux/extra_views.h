@@ -9,6 +9,8 @@
 #include <fstream>
 #include <filesystem>
 #include <future>
+#include <thread>
+#include <chrono>
 
 namespace fs = std::filesystem;
 
@@ -139,9 +141,9 @@ private:
         });
     }
 
-    std::string status_ = "Ready";
-    bool running_ = false;
-    std::future<std::string> future_;
+    mutable std::string status_ = "Ready";
+    mutable bool running_ = false;
+    mutable std::future<std::string> future_;
     mutable int spinnerIndex_ = 0;
     const std::vector<char> spinner_ = {'|', '/', '-', '\\'};
 };

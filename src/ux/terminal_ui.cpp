@@ -3,6 +3,9 @@
 #include <fstream>
 #include <regex>
 #include <sstream>
+#include <iterator>
+#include <vector>
+#include <cstdio>
 
 #ifdef _WIN32
 #include <windows.h>

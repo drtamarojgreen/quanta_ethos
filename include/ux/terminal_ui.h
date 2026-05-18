@@ -30,3 +30,4 @@ private:
     std::string colorActive_ = "\033[1;30;47m";
     std::string colorNormal_ = "\033[0m";
     std::string colorAccent_ = "\033[1;34m";
+};

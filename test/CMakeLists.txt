@@ -35,6 +35,7 @@ add_executable(prismquanta_unit_tests
     unit/sec/test_sec_detailed.cpp
     unit/perf/test_perf_detailed.cpp
     unit/deploy/test_deploy_detailed.cpp
+    unit/ux/test_tui_expansion.cpp
     unit/test_regression_all.cpp
 )
 target_include_directories(prismquanta_unit_tests PRIVATE ${TEST_INCLUDE_DIRS})

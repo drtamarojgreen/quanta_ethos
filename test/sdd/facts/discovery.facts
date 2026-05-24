@@ -1,8 +1,14 @@
 Situation: Discovery
-Is os = Ubuntu 24.04.1 LTS
-Is kernel = 6.8.0
-Is arch = x86_64
-Is compiler = g++ 13.3.0
-Is cmake = 3.28.3
-Is ctest = 3.28.3
-Results env_ready = 1
+Is os_version_major = 24
+Is kernel_major = 6
+Is kernel_minor = 8
+Is cpu_cores = 4
+Is mem_total_kb = 8150116
+Is compiler_version_major = 13
+Is compiler_version_minor = 3
+Is cmake_version_major = 3
+Is cmake_version_minor = 28
+Is ctest_version_major = 3
+Is ctest_version_minor = 28
+Is total_file_count = 458
+Results discovery_fidelity_score = 12

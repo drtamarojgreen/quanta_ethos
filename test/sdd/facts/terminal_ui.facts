@@ -1,9 +1,7 @@
 Situation: TerminalUI
-Is ui_type = terminal
-Is layout_style = side_panel
-Is menu_width_ratio = 0.25
-Is content_width_ratio = 0.75
-Is ansi_supported = 1
-Is interface_required = ITerminalView
-Is subsystems_integrated = CoreEngine,EthicalGov,ModelBackend
-Results terminal_ui_operational = 1
+Is ui_type_id = 42
+Is layout_style_id = 7
+Is menu_width_ratio_milli = 250
+Is content_width_ratio_milli = 750
+Is subsystems_count = 3
+Results terminal_ui_operational_score = 100

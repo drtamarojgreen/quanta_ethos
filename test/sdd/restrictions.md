@@ -5,6 +5,7 @@
 - Prohibit meaningless assertions (e.g., asserting string is not empty).
 - All assertions must verify specific expected empirical values.
 - No forbidden markers (T.O.D.O, S.T.U.B, p.l.a.c.e.h.o.l.d.e.r) in source code.
+- **LLM Laziness Prohibition**: Using '1' or '0' as lazy substitutes for boolean values is prohibited. Numeric evidence must represent actual physical or logical measurements (counts, sizes, versions, timestamps, durations).
 
 ## Tool Restrictions
 - Allowed tools: g++, cmake, ctest, python3.
@@ -21,7 +22,7 @@
 ## Validation Restrictions
 - All validation logic must reference real outputs.
 - Numeric Evidence Doctrine: All cards must produce numeric, machine-parseable observations.
-- Self-certification using only boolean (pass/fail) is prohibited.
+- Self-certification using only boolean (pass/fail) or binary flags (1/0) is prohibited. Evidence must be descriptive.
 - Green Syntax: Cards and structured communications must use TOOLS, PARAMETERS, and RESULTS blocks.
 
 ## Sorrel C++ Checker Restrictions

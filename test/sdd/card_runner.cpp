@@ -45,16 +45,27 @@ private:
         bool has_tools = false;
         bool has_params = false;
         bool has_results = false;
+        bool is_lazy = false;
         bool has_numeric = false;
 
         std::cout << "Card File: " << path.filename() << std::endl;
 
-        std::regex results_regex(R"(@Results\s+\w+\s*==\s*\d+)");
+        std::regex results_regex(R"(@Results\s+\w+\s*==\s*(\d+))");
 
         while (std::getline(file, line)) {
             std::string trimmed = trim_str(line);
             if (trimmed.find("// @Card:") == 0) {
                 std::cout << "  [Card Found] " << trimmed.substr(9) << std::endl;
+            }
+            if (trimmed.find("TOOLS") != std::string::npos) has_tools = true;
+            if (trimmed.find("PARAMETERS") != std::string::npos) has_params = true;
+            if (trimmed.find("RESULTS") != std::string::npos) has_results = true;
+
+            std::smatch match;
+            if (std::regex_search(trimmed, match, results_regex)) {
+                has_numeric = true;
+                std::string val = match[1].str();
+                if (val == "0" || val == "1") is_lazy = true;
             }
             if (trimmed.find("TOOLS") != std::string::npos) has_tools = true;
             if (trimmed.find("PARAMETERS") != std::string::npos) has_params = true;
@@ -71,6 +82,17 @@ private:
             std::cout << "    Execution: SUCCESS (Numeric Evidence Verified)" << std::endl;
         } else {
             std::cout << "    Execution: FAILED (Structural/Evidence Violation)" << std::endl;
+        }
+
+        std::cout << "    Green Syntax: "
+                  << (has_tools && has_params && has_results ? "VALID" : "INVALID") << std::endl;
+        std::cout << "    Numeric Evidence: "
+                  << (has_numeric ? (is_lazy ? "LAZY (FAILED)" : "VALID") : "MISSING") << std::endl;
+
+        if (has_tools && has_params && has_results && has_numeric && !is_lazy) {
+            std::cout << "    Execution: SUCCESS (Descriptive Evidence Verified)" << std::endl;
+        } else {
+            std::cout << "    Execution: FAILED (Structural/Metric Violation)" << std::endl;
         }
     }
 };

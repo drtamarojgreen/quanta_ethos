@@ -75,7 +75,11 @@ def validate_facts(sdd_root):
                     if has_sit and has_is: strict_count += 1
                     for line in content.splitlines():
                         m = re.search(r'^(?:Is|Needs|Results)\s+([\w.]+)\s*=', line)
-                        if m: keys.add(m.group(1).strip())
+                        if m:
+                            val = line.split('=')[1].strip()
+                            if val in ['0', '1', 'true', 'false']:
+                                failures.append(("Facts", f"Lazy boolean/binary value '{val}' in {f}", "Use descriptive numeric metrics."))
+                            keys.add(m.group(1).strip())
 
     if total_files > 0 and strict_count == total_files:
         fact_bonus = 10
@@ -94,11 +98,16 @@ def validate_ledgers(sdd_root):
         bonus += 10
         with open(checkouts, 'r', errors='ignore') as f:
             content = f.read()
-            # Check for numeric evidence in checkouts
-            if re.search(r'\w+\s*=\s*\d+', content):
-                bonus += 5
+            # Check for numeric evidence in checkouts, penalize 0/1
+            matches = re.findall(r'(\w+)\s*=\s*(\d+)', content)
+            if matches:
+                lazy_count = sum(1 for k, v in matches if v in ['0', '1'])
+                if lazy_count > 0:
+                    failures.append(("Ledgers", f"Found {lazy_count} lazy binary observations (0/1).", "Use high-fidelity numeric metrics."))
+                else:
+                    bonus += 10
             else:
-                failures.append(("Ledgers", "No numeric evidence found in sorrel_checkouts.md", "Include machine-parseable numeric observations in checkout logs."))
+                failures.append(("Ledgers", "No numeric evidence found in sorrel_checkouts.md", "Include machine-parseable numeric observations."))
     else:
         failures.append(("Ledgers", "Dual-ledger files missing.", "Ensure sorrel_checkins.md and sorrel_checkouts.md exist."))
 
@@ -124,7 +133,7 @@ def scan_penalties(repo_path, rules):
                             c = file.read().lower()
                             if any(p in c for p in bad_m):
                                 found_m = True
-                                failures.append(("Source Code", f"Forbidden marker found in {os.path.relpath(os.path.join(root, f), repo_path)}", "Remove all temporary markers and fully implement features."))
+                                failures.append(("Source Code", f"Forbidden marker found in {os.path.relpath(os.path.join(root, f), repo_path)}", "Remove all temporary markers."))
                                 break
                     except Exception: pass
             if found_m: break
@@ -147,7 +156,7 @@ def main():
     score = 0
 
     if not sdd_root:
-        all_failures.append(("Structure", "SDD root directory not found.", "Create tests/sdd/ or sdd/ directory."))
+        all_failures.append(("Structure", "SDD root directory not found.", "Create tests/sdd/ directory."))
     else:
         for f, w in rules['files'].items():
             if os.path.isfile(os.path.join(sdd_root, f)): score += w
@@ -172,17 +181,20 @@ def main():
                             for _ in matches:
                                 score += rules['card_base']
                                 if "@Results" in c: score += rules['card_results']
-                                # Precision Power check: Green Syntax
                                 if "TOOLS" in c and "PARAMETERS" in c and "RESULTS" in c:
                                     score += rules['green_syntax']
                                 else:
-                                    all_failures.append(("Cards", f"Green Syntax missing in {f}", "Add TOOLS, PARAMETERS, and RESULTS blocks to card."))
-                                # Precision Power check: Numeric Evidence in Results
-                                if re.search(r'//\s*@Results\s+\w+\s*==\s*\d+', c):
-                                    score += rules['numeric_evidence']
+                                    all_failures.append(("Cards", f"Green Syntax missing in {f}", "Add TOOLS, PARAMETERS, and RESULTS blocks."))
+                                # Precision Power check: Anti-Laziness (no 0/1)
+                                res_matches = re.findall(r'//\s*@Results\s+\w+\s*==\s*(\d+)', c)
+                                if res_matches:
+                                    if all(v not in ['0', '1'] for v in res_matches):
+                                        score += rules['numeric_evidence']
+                                    else:
+                                        all_failures.append(("Cards", f"Lazy binary result (0/1) in {f}", "Use descriptive numeric metrics."))
                                 else:
                                     all_failures.append(("Cards", f"Numeric Evidence missing in {f}", "Ensure @Results decorator uses numeric comparisons."))
-        else: all_failures.append(("Cards", "cards/ directory missing.", "Create cards/ directory and implement SDD card classes."))
+        else: all_failures.append(("Cards", "cards/ directory missing.", "Create cards/ directory."))
 
     p_fails, penalty = scan_penalties(repo_path, rules)
     all_failures.extend(p_fails)

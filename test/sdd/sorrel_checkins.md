@@ -13,3 +13,9 @@
 - [x] Implement SORREL adherence checker tool.
 - [x] Integrate SORREL checker into Terminal UI.
 - [x] Implement SORREL Card Runner.
+- [x] SIP-001: Define Precision Power Restrictions.
+- [x] SIP-002: Enhance SDD Checker for Green Syntax and Numeric Evidence.
+- [x] SIP-003: Enhance Card Runner for Green Syntax parsing.
+- [x] SIP-004: Refactor existing cards to Green Syntax.
+- [x] SIP-005: Refactor fact files to strict syntax.
+- [x] SIP-006: Verify system with updated SDD tools.

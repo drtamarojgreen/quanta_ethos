@@ -5,6 +5,11 @@
 
 namespace fs = std::filesystem;
 
+// @Card: sdd_structural_interface_enforcement
+// TOOLS: g++
+// PARAMETERS: None
+// RESULTS: plugin_loader_valid == 1
+// @Results plugin_loader_valid == 1
 TEST_CASE(sdd_structural_interface_enforcement) {
     // Artifact placement: tests/temp/
     fs::path temp_dir = "test/temp/structural_enforcement";

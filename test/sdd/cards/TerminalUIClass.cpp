@@ -7,7 +7,10 @@
 namespace fs = std::filesystem;
 
 // @Card: terminal_ui_structural_verification
-// @Results terminal_ui_operational == true
+// TOOLS: g++, cmake, ctest
+// PARAMETERS: layout_style = side_panel, menu_width_ratio = 0.25
+// RESULTS: terminal_ui_operational == 1
+// @Results terminal_ui_operational == 1
 TEST_CASE(terminal_ui_structural_verification) {
     // Artifact placement standard: tests/temp/
     fs::path temp_path = "test/temp/terminal_ui_test";

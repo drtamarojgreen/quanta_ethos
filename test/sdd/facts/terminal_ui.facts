@@ -1,10 +1,9 @@
-# Terminal UI Facts
-Situation: Default
+Situation: TerminalUI
 Is ui_type = terminal
 Is layout_style = side_panel
 Is menu_width_ratio = 0.25
 Is content_width_ratio = 0.75
-Is ansi_supported = true
+Is ansi_supported = 1
 Is interface_required = ITerminalView
 Is subsystems_integrated = CoreEngine,EthicalGov,ModelBackend
-Results terminal_ui_operational = true
+Results terminal_ui_operational = 1

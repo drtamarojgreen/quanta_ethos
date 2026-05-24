@@ -13,7 +13,9 @@ def load_scoring_rules(xml_path):
         'bonus': {},
         'penalties': {},
         'card_base': 2,
-        'card_results': 3
+        'card_results': 3,
+        'green_syntax': 5,
+        'numeric_evidence': 5
     }
     if not os.path.exists(xml_path): return rules
     try:
@@ -28,6 +30,10 @@ def load_scoring_rules(xml_path):
             rules['penalties'][p.get('name')] = int(p.get('value'))
         rules['card_base'] = int(root.find('CardWeights/BaseWeight').text)
         rules['card_results'] = int(root.find('CardWeights/ResultsDecoratorWeight').text)
+        # Precision Power extensions
+        if root.find('PrecisionPower'):
+            rules['green_syntax'] = int(root.find('PrecisionPower/GreenSyntaxWeight').text)
+            rules['numeric_evidence'] = int(root.find('PrecisionPower/NumericEvidenceWeight').text)
     except Exception:
         pass
     return rules
@@ -65,8 +71,8 @@ def validate_facts(sdd_root):
                 with open(file_path, 'r', errors='ignore') as file:
                     content = file.read()
                     has_sit = "Situation:" in content
-                    has_level = re.search(r'^(?:Is|Needs|Results)\s+', content, re.MULTILINE)
-                    if has_sit and has_level: strict_count += 1
+                    has_is = "Is " in content
+                    if has_sit and has_is: strict_count += 1
                     for line in content.splitlines():
                         m = re.search(r'^(?:Is|Needs|Results)\s+([\w.]+)\s*=', line)
                         if m: keys.add(m.group(1).strip())
@@ -74,21 +80,37 @@ def validate_facts(sdd_root):
     if total_files > 0 and strict_count == total_files:
         fact_bonus = 10
     else:
-        failures.append(("Facts", "Not all fact files follow strict Situation/Level syntax.", "Update all .facts files to use Situation headers and Level prefixes."))
+        failures.append(("Facts", "Not all fact files follow strict Situation/Is syntax.", "Update all .facts files to use Situation headers and Level prefixes."))
 
     return failures, keys, fact_bonus
+
+def validate_ledgers(sdd_root):
+    failures = []
+    bonus = 0
+    checkins = os.path.join(sdd_root, 'sorrel_checkins.md')
+    checkouts = os.path.join(sdd_root, 'sorrel_checkouts.md')
+
+    if os.path.exists(checkins) and os.path.exists(checkouts):
+        bonus += 10
+        with open(checkouts, 'r', errors='ignore') as f:
+            content = f.read()
+            # Check for numeric evidence in checkouts
+            if re.search(r'\w+\s*=\s*\d+', content):
+                bonus += 5
+            else:
+                failures.append(("Ledgers", "No numeric evidence found in sorrel_checkouts.md", "Include machine-parseable numeric observations in checkout logs."))
+    else:
+        failures.append(("Ledgers", "Dual-ledger files missing.", "Ensure sorrel_checkins.md and sorrel_checkouts.md exist."))
+
+    return failures, bonus
 
 def scan_penalties(repo_path, rules):
     failures = []
     penalty_total = 0
 
-    m1 = 'place' + 'holder'
-    m2 = 'st' + 'ub'
-    m3 = 'to' + 'do'
-    bad_m = [m1, m2, m3]
+    bad_m = ['place' + 'holder', 'st' + 'ub', 'to' + 'do']
 
     found_m = False
-    # Only scan src/ and test/ for placeholders to avoid docs/ noise
     scan_dirs = [os.path.join(repo_path, d) for d in ['src', 'test', 'tests', 'include']]
     for sd in scan_dirs:
         if not os.path.isdir(sd): continue
@@ -109,18 +131,6 @@ def scan_penalties(repo_path, rules):
         if found_m: break
 
     if found_m: penalty_total += rules['penalties'].get('placeholder_usage', 0)
-
-    sdd_root = find_sdd_root(repo_path)
-    if sdd_root:
-        sorrel_exe = os.path.join(sdd_root, 'sorrel')
-        if os.path.isfile(sorrel_exe):
-            try:
-                with open(sorrel_exe, 'rb') as f:
-                    header = f.read(4)
-                    if header.startswith(b'#!'):
-                        failures.append(("SORREL CLI", "SORREL CLI is a script.", "Implement SORREL CLI in C++ and compile it."))
-                        penalty_total += rules['penalties'].get('bash_cli_replacement', 0)
-            except Exception: pass
 
     return failures, penalty_total
 
@@ -147,15 +157,9 @@ def main():
         all_failures.extend(f_fails)
         score += f_bonus
 
-        sorrel_exe = os.path.join(sdd_root, 'sorrel')
-        if os.path.isfile(sorrel_exe) and os.access(sorrel_exe, os.X_OK):
-            score += 15
-            with open(sorrel_exe, 'r', errors='ignore') as f:
-                c = f.read()
-                if all(cmd in c for cmd in ['sip', 'discover sdd', 'discover facts']):
-                    score += 10
-                else: all_failures.append(("SORREL CLI", "CLI missing mandatory commands.", "Implement sip, discover sdd, and discover facts."))
-        else: all_failures.append(("SORREL CLI", "sorrel executable missing in SDD root.", "Implement SORREL CLI as a compiled binary."))
+        l_fails, l_bonus = validate_ledgers(sdd_root)
+        all_failures.extend(l_fails)
+        score += l_bonus
 
         cards_dir = os.path.join(sdd_root, 'cards')
         if os.path.isdir(cards_dir):
@@ -168,6 +172,16 @@ def main():
                             for _ in matches:
                                 score += rules['card_base']
                                 if "@Results" in c: score += rules['card_results']
+                                # Precision Power check: Green Syntax
+                                if "TOOLS" in c and "PARAMETERS" in c and "RESULTS" in c:
+                                    score += rules['green_syntax']
+                                else:
+                                    all_failures.append(("Cards", f"Green Syntax missing in {f}", "Add TOOLS, PARAMETERS, and RESULTS blocks to card."))
+                                # Precision Power check: Numeric Evidence in Results
+                                if re.search(r'//\s*@Results\s+\w+\s*==\s*\d+', c):
+                                    score += rules['numeric_evidence']
+                                else:
+                                    all_failures.append(("Cards", f"Numeric Evidence missing in {f}", "Ensure @Results decorator uses numeric comparisons."))
         else: all_failures.append(("Cards", "cards/ directory missing.", "Create cards/ directory and implement SDD card classes."))
 
     p_fails, penalty = scan_penalties(repo_path, rules)

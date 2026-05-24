@@ -8,11 +8,12 @@
 #include <array>
 #include <vector>
 #include <algorithm>
+#include <regex>
 
 namespace fs = std::filesystem;
 
-// Implementation of the SORREL Card Runner
-// Discovers and executes card blocks within C++ classes.
+// Implementation of the Precision Power SDD Card Runner
+// Discovers and executes card blocks, enforcing Green Syntax and Numeric Evidence.
 
 std::string trim_str(const std::string& s) {
     auto start = s.begin();
@@ -26,33 +27,66 @@ std::string trim_str(const std::string& s) {
 class CardRunner {
 public:
     void run(const fs::path& sdd_dir) {
-        std::cout << "--- SORREL Card Runner Execution ---" << std::endl;
+        std::cout << "--- Precision Power SDD Card Runner Execution ---" << std::endl;
         fs::path cards_dir = sdd_dir / "cards";
         if (!fs::exists(cards_dir)) return;
 
         for (const auto& entry : fs::directory_iterator(cards_dir)) {
             if (entry.path().extension() == ".cpp") {
-                processClass(entry.path());
+                processCard(entry.path());
             }
         }
     }
 
 private:
-    void processClass(const fs::path& path) {
+    void processCard(const fs::path& path) {
         std::ifstream file(path);
         std::string line;
-        std::cout << "Class: " << path.filename() << std::endl;
+        bool has_tools = false;
+        bool has_params = false;
+        bool has_results = false;
+        bool has_numeric = false;
+
+        std::cout << "Card File: " << path.filename() << std::endl;
+
+        std::regex results_regex(R"(@Results\s+\w+\s*==\s*\d+)");
+
         while (std::getline(file, line)) {
             std::string trimmed = trim_str(line);
             if (trimmed.find("// @Card:") == 0) {
-                std::cout << "  Executing Card: " << trimmed.substr(9) << std::endl;
+                std::cout << "  [Card Found] " << trimmed.substr(9) << std::endl;
             }
+            if (trimmed.find("TOOLS") != std::string::npos) has_tools = true;
+            if (trimmed.find("PARAMETERS") != std::string::npos) has_params = true;
+            if (trimmed.find("RESULTS") != std::string::npos) has_results = true;
+            if (std::regex_search(trimmed, results_regex)) has_numeric = true;
+        }
+
+        std::cout << "    Green Syntax: "
+                  << (has_tools && has_params && has_results ? "VALID" : "INVALID") << std::endl;
+        std::cout << "    Numeric Evidence: "
+                  << (has_numeric ? "VALID" : "INVALID") << std::endl;
+
+        if (has_tools && has_params && has_results && has_numeric) {
+            std::cout << "    Execution: SUCCESS (Numeric Evidence Verified)" << std::endl;
+        } else {
+            std::cout << "    Execution: FAILED (Structural/Evidence Violation)" << std::endl;
         }
     }
 };
 
-int main() {
+int main(int argc, char* argv[]) {
+    fs::path sdd_path = fs::current_path();
+    if (argc > 1) {
+        sdd_path = argv[1];
+    }
+
+    // Minimal argv dispatch simulation
+    if (argc > 2 && std::string(argv[2]) == "--list") {
+        std::cout << "Listing cards..." << std::endl;
+    }
+
     CardRunner runner;
-    runner.run(fs::current_path());
+    runner.run(sdd_path);
     return 0;
 }

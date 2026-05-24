@@ -84,7 +84,7 @@ def validate_facts(sdd_root):
     if total_files > 0 and strict_count == total_files:
         fact_bonus = 10
     else:
-        failures.append(("Facts", "Not all fact files follow strict Situation/Is syntax.", "Update all .facts files to use Situation headers."))
+        failures.append(("Facts", "Not all fact files follow strict Situation/Is syntax.", "Update all .facts files to use Situation headers and Level prefixes."))
 
     return failures, keys, fact_bonus
 

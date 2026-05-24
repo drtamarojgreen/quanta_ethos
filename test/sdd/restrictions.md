@@ -1,24 +1,29 @@
-# CHAI Restrictions
+# Precision Power SDD Restrictions
 
 ## Pattern Restrictions
 - Prohibit empty catch blocks.
 - Prohibit meaningless assertions (e.g., asserting string is not empty).
 - All assertions must verify specific expected empirical values.
+- No forbidden markers (T.O.D.O, S.T.U.B, p.l.a.c.e.h.o.l.d.e.r) in source code.
+- **LLM Laziness Prohibition**: Using '1' or '0' as lazy substitutes for boolean values is prohibited. Numeric evidence must represent actual physical or logical measurements (counts, sizes, versions, timestamps, durations).
 
 ## Tool Restrictions
-- Allowed tools: g++, cmake, ctest.
+- Allowed tools: g++, cmake, ctest, python3.
 - Allowed libraries: dlfcn.h, std::thread, std::future, and standard C++17 headers.
+- Any external tool usage must be discovered and verified before use.
 
 ## Architectural Restrictions
-- Mandatory use of interfaces for all 100 features.
+- Mandatory use of interfaces for all features.
 - Components must be independently testable.
+- Sip Principle: Work must be performed in minimal increments (compile, run, observe, stop).
+- Dual-Ledger: All work must be tracked in `sorrel_checkins.md` and `sorrel_checkouts.md`.
 - No direct implementation in CoreEngine; use injected components.
 
 ## Validation Restrictions
 - All validation logic must reference real outputs.
-- 100% test coverage for all new public interfaces.
-- UI Layout Verification: Content start column must be calculated as `(Width / 4) + 2`.
-- Input Verification: Terminal must be restored to `oldt` state before exit.
+- Numeric Evidence Doctrine: All cards must produce numeric, machine-parseable observations.
+- Self-certification using only boolean (pass/fail) or binary flags (1/0) is prohibited. Evidence must be descriptive.
+- Green Syntax: Cards and structured communications must use TOOLS, PARAMETERS, and RESULTS blocks.
 
 ## Sorrel C++ Checker Restrictions
 - `SddEngine` must be independent of any UI framework.
@@ -26,4 +31,4 @@
 - `ScoringEngine` must load weights and penalties from `data/sdd_scoring_rules.xml`.
 - All TUI components must use ANSI escape codes only (no ncurses).
 - The `sorrel` CLI must be a standalone compiled C++ binary.
-- `SddEngine` must use the SIP principle: minimal execution increments.
+- Reasoning Gate System (RGS): Plans must be validated against constraints before execution.

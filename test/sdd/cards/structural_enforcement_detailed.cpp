@@ -5,6 +5,11 @@
 
 namespace fs = std::filesystem;
 
+// @Card: sdd_structural_interface_enforcement
+// TOOLS: g++
+// PARAMETERS: None
+// RESULTS: component_count == 4, inheritance_depth == 2
+// @Results component_count == 4
 TEST_CASE(sdd_structural_interface_enforcement) {
     // Artifact placement: tests/temp/
     fs::path temp_dir = "test/temp/structural_enforcement";

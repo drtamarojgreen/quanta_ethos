@@ -34,6 +34,7 @@ int main(int argc, char* argv[]) {
     ui.addView(std::make_unique<ModelView>());
     ui.addView(std::make_unique<SddCheckerView>());
     ui.addView(std::make_unique<SorrelMenuView>());
+    ui.addView(std::make_unique<ProgressView>());
     ui.addView(std::make_unique<PluginsMenuView>());
     ui.addView(std::make_unique<DataAnalysisMenuView>());
 

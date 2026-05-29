@@ -7,6 +7,8 @@
 #include "ux/subsystem_views.h"
 #include "ux/sdd_checker_view.h"
 #include "ux/extra_views.h"
+#include "ux/user_settings.h"
+#include "model/health_monitor.h"
 #include "logic/config_engine.h"
 
 int main(int argc, char* argv[]) {
@@ -25,7 +27,9 @@ int main(int argc, char* argv[]) {
     }
 
     // Launch Terminal UI by default
-    TerminalUI ui(config);
+    UserSettings settings;
+    HealthMonitor monitor;
+    TerminalUI ui(config, settings, monitor);
     ui.addView(std::make_unique<FileMenuView>());
     ui.addView(std::make_unique<ViewSettingsMenuView>());
     ui.addView(std::make_unique<ExportMenuView>());
@@ -38,7 +42,7 @@ int main(int argc, char* argv[]) {
     ui.addView(std::make_unique<PluginsMenuView>());
     ui.addView(std::make_unique<DataAnalysisMenuView>());
 
-    config.set("system.view_count", "10");
+    config.set("system.view_count", "11");
 
     ui.run();
 

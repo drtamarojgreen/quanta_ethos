@@ -33,3 +33,8 @@
 - [x] SIP-014: Implement Contextual Help and Toast Notification System.
 - [x] SIP-015: Implement Progress Center and Remappable Keybindings.
 - [x] SIP-016: Implement Accessibility Themes and Typography Density Controls.
+- [x] SIP-017: Implement Security Controls (PIN Lock, Destructive Double-Confirm).
+- [x] SIP-018: Implement Data Export System (MD, CSV, JSON).
+- [x] SIP-019: Implement Help Overlay and Power-User Tips.
+- [x] SIP-020: Implement ASCII-only fallback rendering.
+- [x] SIP-021: Verify full feature set with comprehensive SDD Card.

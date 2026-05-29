@@ -33,22 +33,8 @@ public:
     bool isVisible(const ConfigEngine& config) const override { return true; }
     void render(const ConfigEngine& config, int startCol) const override {
         std::cout << "\033[1mBackground Tasks\033[0m\n";
-        std::cout << "\033[2;" << startCol << "H- Model Loading: [##########] 100%\n";
-        std::cout << "\033[3;" << startCol << "H- Fact Discovery: [#####     ] 50%\n";
-        std::cout << "\033[4;" << startCol << "H- Indexing:       [##        ] 20%\n";
-    }
-    void handleInput(int input, ConfigEngine& config) override {}
-};
-
-class ProgressView : public ITerminalView {
-public:
-    std::string getTitle() const override { return "Progress Center"; }
-    bool isVisible(const ConfigEngine& config) const override { return true; }
-    void render(const ConfigEngine& config, int startCol) const override {
-        std::cout << "\033[1mBackground Tasks\033[0m\n";
-        std::cout << "\033[2;" << startCol << "H- Model Loading: [##########] 100%\n";
-        std::cout << "\033[3;" << startCol << "H- Fact Discovery: [#####     ] 50%\n";
-        std::cout << "\033[4;" << startCol << "H- Indexing:       [##        ] 20%\n";
+        std::cout << "\033[2;" << startCol << "H- Pipeline State: IDLE\n";
+        std::cout << "\033[3;" << startCol << "H- Active Tasks:   0\n";
     }
     void handleInput(int input, ConfigEngine& config) override {}
 };

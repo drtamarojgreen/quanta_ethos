@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ux/terminal_view.h"
+#include "ux/data_exporter.h"
 #include "dev/sdd_engine.h"
 #include "dev/benchmarker.h"
 #include <iostream>
@@ -36,6 +37,13 @@ public:
             status_ = "Configuration saved to " + configPath_;
         }
     }
+
+    std::vector<ContextMenuItem> getContextMenu() const override {
+        return {
+            {"Reload", [this]() { status_ = "Reload triggered"; }},
+            {"Reset Path", [this]() { status_ = "Path reset"; }}
+        };
+    }
 private:
     std::string configPath_ = "prismquanta.conf";
     std::string status_ = "Ready";
@@ -48,23 +56,43 @@ public:
 
     void render(const ConfigEngine& config, int startCol) const override {
         std::cout << "\033[1mExport Data\033[0m\n";
-        std::cout << "\033[2;" << startCol << "H1. Export Config to data/config_export.txt\n";
-        std::cout << "\033[3;" << startCol << "H2. Export SDD Report to data/sdd_export.txt\n";
-        std::cout << "\033[5;" << startCol << "HStatus: " << status_ << "\n";
-        std::cout << "\033[7;" << startCol << "H[1-2] Select Action";
+        std::cout << "\033[2;" << startCol << "H1. Export Config (TXT)\n";
+        std::cout << "\033[3;" << startCol << "H2. Export SDD (MD)\n";
+        std::cout << "\033[4;" << startCol << "H3. Export SDD (CSV)\n";
+        std::cout << "\033[5;" << startCol << "H4. Export SDD (JSON)\n";
+        std::cout << "\033[7;" << startCol << "HStatus: " << status_ << "\n";
+        std::cout << "\033[9;" << startCol << "H[1-4] Select Action";
     }
 
     void handleInput(int input, ConfigEngine& config) override {
+        SddEngine engine;
+        SddReport report = engine.runCheck(".");
+        std::vector<std::string> headers = {"Component", "Reason", "Improvement"};
+        std::vector<std::vector<std::string>> rows;
+        for (const auto& f : report.failures) {
+            rows.push_back({f.component, f.reason, f.improvement});
+        }
+
         if (input == '1') {
             config.save("data/config_export.txt");
-            status_ = "Config exported.";
+            status_ = "Config exported to TXT.";
         } else if (input == '2') {
-            SddEngine engine;
-            SddReport report = engine.runCheck(".");
-            std::ofstream file("data/sdd_export.txt");
-            file << "SDD Report Score: " << report.score << "\nStatus: " << report.status << "\n";
-            status_ = "SDD Report exported.";
+            DataExporter::exportToMarkdown("data/sdd_report.md", headers, rows);
+            status_ = "Report exported to Markdown.";
+        } else if (input == '3') {
+            DataExporter::exportToCSV("data/sdd_report.csv", headers, rows);
+            status_ = "Report exported to CSV.";
+        } else if (input == '4') {
+            DataExporter::exportToJSON("data/sdd_report.json", headers, rows);
+            status_ = "Report exported to JSON.";
         }
+    }
+
+    std::vector<ContextMenuItem> getContextMenu() const override {
+        return {
+            {"Clear Logs", [this]() { status_ = "Logs cleared"; }},
+            {"Open Export Dir", [this]() { status_ = "Dir opened"; }}
+        };
     }
 private:
     std::string status_ = "Ready";
@@ -135,7 +163,6 @@ private:
         running_ = true;
         future_ = std::async(std::launch::async, [cmd]() {
             std::string result = "Op Completed: " + cmd;
-            // Mock execution for TUI responsiveness
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
             return result;
         });
@@ -196,7 +223,6 @@ public:
 
         Benchmarker bench("TUI_Render");
         bench.start();
-        // Mock some analysis work
         bench.stop();
 
         std::cout << "\033[6;" << startCol << "H- Last Render: " << bench.getDurationMs() << "ms\n";

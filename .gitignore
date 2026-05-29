@@ -1,8 +1,0 @@
-build/
-bin/
-test/temp/
-*.o
-*.d
-prismquanta
-quanta_ethos
-sorrel

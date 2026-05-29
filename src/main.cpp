@@ -12,6 +12,7 @@
 int main(int argc, char* argv[]) {
     ConfigEngine config;
     config.load("prismquanta.conf");
+    config.load(".quanta");
 
     // Check for CLI flag
     if (argc > 1 && std::string(argv[1]) == "--cli") {

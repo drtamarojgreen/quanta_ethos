@@ -1,0 +1,15 @@
+# Build artifacts
+build/
+bin/
+*.exe
+*.o
+*.a
+*.so
+
+# Local configuration
+.quanta
+prismquanta.conf.local
+.env
+logs/
+queue/
+actions/

@@ -143,6 +143,31 @@ The checker uses a rules-based scoring engine (`data/sdd_scoring_rules.xml`). It
 -   **Card Coverage**: Implementation of executable cards for all features.
 -   **Modularity**: Logical partitioning into subdirectories and high interface-to-implementation ratios.
 
+## Local Model Integration
+
+QuantaEthos now supports local LLM execution.
+
+### 1. Backend
+The system uses a cli as the execution engine for optimal performance and compatibility.
+
+### 2. Configuration: .quanta
+To protect sensitive local paths and ensure the repository remains portable, QuantaEthos uses a local-only `.quanta` configuration file. This file is automatically ignored by Git.
+
+**Setup your local paths:**
+Create a `.quanta` file in the project root with the following keys:
+```ini
+# Local paths for PrismQuanta (Not committed to repo)
+engine.model_path=/path/to/your/model.gguf
+model.llama_cli_path=/path/to/your/build/bin/
+```
+
+The system will prioritize values in `.quanta` over the default `prismquanta.conf`.
+
+### 3. Model Support
+Successfully validated with local model. 
+-   **Split Models**: Supports loading multi-part GGUF files.
+-   **Performance**: Integrated response cleaning removes interactive shell noise and ASCII banners, delivering only the model's core response to the ethical validator.
+
 ## The PrismQuanta Ethical Framework
 
 This project is not just about technology; it's about building AI that is principled, transparent, and aligned with human values. The ethical framework is a core part of the project and is detailed in the following documents:

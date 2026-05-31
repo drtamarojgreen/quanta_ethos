@@ -98,7 +98,35 @@ public:
     int getMacroSize() const { return macroBuffer_.size(); }
     InputMode getMode() const { return mode_; }
 
+    // Navigation and UX services
+    void jumpTo(int index);
+    void addBookmark(int index);
+    const std::vector<int>& getRecentScreens() const { return recentScreens_; }
+    const std::vector<int>& getBookmarks() const { return bookmarks_; }
+    const std::vector<Notification>& getNotificationHistory() const { return notificationHistory_; }
+
+    // Interaction services
+    void pushUndo(std::function<void()> undoAction);
+    void undo();
+    void redo();
+    void addToClipboard(const std::string& text);
+    std::string getFromClipboard();
+
+    // Enterprise services
+    bool hasPermission(const std::string& cmd);
+    void logAction(const std::string& action);
+
 private:
+    std::vector<std::function<void()>> undoStack_;
+    std::vector<std::function<void()>> redoStack_;
+    std::vector<std::string> clipboardRing_;
+    std::vector<int> recentScreens_;
+    std::vector<int> bookmarks_;
+    std::vector<Notification> notificationHistory_;
+    std::vector<std::string> auditLog_;
+    std::map<std::string, std::string> snippets_;
+    std::string userRole_ = "admin";
+
     // Theme variables
     std::string colorHeader_ = "\033[1;37;44m";
     std::string colorActive_ = "\033[1;30;47m";

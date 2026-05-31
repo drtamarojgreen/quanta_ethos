@@ -42,3 +42,10 @@
 - [x] SIP-023: Implement Plugin Marketplace and Changelog views.
 - [x] SIP-024: Implement Incident Timeline and User Analytics.
 - [x] SIP-025: Implement Macro Recording and Replay system.
+- [x] SIP-026: Implement Interaction Services (Undo, Clipboard, Snippets).
+- [x] SIP-027: Implement Advanced Visualization (Tree, Charts, paginated lists).
+- [x] SIP-028: Implement Enterprise Features (RBAC, Audit, Profiles).
+- [x] SIP-029: Implement Environment & Accessibility (i18n, A11y, Responsive).
+- [x] SIP-030: Implement UX Polish (Onboarding, Recent History).
+- [x] SIP-031: Implement Advanced Workflow (Editors, Workflow Review).
+- [x] SIP-032: Implement Intelligence & Maintenance (Simulation, Anomalies, Migration).

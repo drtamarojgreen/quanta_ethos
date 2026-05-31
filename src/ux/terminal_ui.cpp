@@ -19,6 +19,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/ioctl.h>
 #endif
 
 TerminalUI::TerminalUI(ConfigEngine& config, UserSettings& settings, HealthMonitor& monitor, AsyncPipeline& pipeline)
@@ -66,6 +67,21 @@ TerminalUI::TerminalUI(ConfigEngine& config, UserSettings& settings, HealthMonit
         for (const auto& cmd : macroBuffer_) { if (commands_.count(cmd)) commands_[cmd](); }
         addNotification("Macro Replayed", Severity::INFO);
     });
+    registerCommand("dry_run", [this]() {
+        config_.set("system.dry_run", "true");
+        addNotification("Dry-Run Mode Enabled", Severity::WARNING);
+    });
+    registerCommand("undo", [this]() { undo(); });
+    registerCommand("redo", [this]() { redo(); });
+    registerCommand("clip_list", [this]() {
+        std::string list = "Clipboard: ";
+        for (const auto& c : clipboardRing_) list += "[" + c + "] ";
+        addNotification(list, Severity::INFO);
+    });
+
+    // Snippets
+    snippets_["gc"] = "layout_grid";
+    snippets_["fs"] = "layout_focus";
 
     // Persistent History Load
     std::ifstream hfile("data/cmd_history.txt");
@@ -82,8 +98,60 @@ void TerminalUI::registerCommand(const std::string& name, std::function<void()> 
 }
 
 void TerminalUI::addNotification(const std::string& message, Severity severity) {
-    notifications_.push_back({message, severity, std::chrono::system_clock::now()});
+    Notification n = {message, severity, std::chrono::system_clock::now()};
+    notifications_.push_back(n);
+    notificationHistory_.push_back(n);
     if (notifications_.size() > 5) notifications_.erase(notifications_.begin());
+    if (notificationHistory_.size() > 100) notificationHistory_.erase(notificationHistory_.begin());
+}
+
+void TerminalUI::jumpTo(int index) {
+    if (index >= 0 && index < (int)views_.size()) {
+        activeViewIndex_ = index;
+        recentScreens_.push_back(index);
+        if (recentScreens_.size() > 10) recentScreens_.erase(recentScreens_.begin());
+    }
+}
+
+void TerminalUI::addBookmark(int index) {
+    if (index >= 0 && index < (int)views_.size()) bookmarks_.push_back(index);
+}
+
+void TerminalUI::pushUndo(std::function<void()> undoAction) {
+    undoStack_.push_back(undoAction);
+    redoStack_.clear();
+}
+
+void TerminalUI::undo() {
+    if (undoStack_.empty()) return;
+    auto action = undoStack_.back();
+    undoStack_.pop_back();
+    action();
+    addNotification("Undo performed", Severity::INFO);
+}
+
+void TerminalUI::redo() {
+    addNotification("Redo not implemented in this sip", Severity::WARNING);
+}
+
+void TerminalUI::addToClipboard(const std::string& text) {
+    clipboardRing_.push_back(text);
+    if (clipboardRing_.size() > 10) clipboardRing_.erase(clipboardRing_.begin());
+}
+
+std::string TerminalUI::getFromClipboard() {
+    return clipboardRing_.empty() ? "" : clipboardRing_.back();
+}
+
+bool TerminalUI::hasPermission(const std::string& cmd) {
+    if (userRole_ == "admin") return true;
+    if (cmd == "quit" || cmd == "help") return true;
+    return false;
+}
+
+void TerminalUI::logAction(const std::string& action) {
+    auditLog_.push_back(action);
+    if (auditLog_.size() > 50) auditLog_.erase(auditLog_.begin());
 }
 
 void TerminalUI::loadExplanations() {
@@ -128,6 +196,17 @@ void TerminalUI::updateTheme() {
 
 void TerminalUI::drawLayout() {
     updateTheme();
+
+    // Responsive Layout - Detect Size
+    int width = 80; int height = 24;
+#ifndef _WIN32
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+    width = w.ws_col; height = w.ws_row;
+#endif
+    config_.set("system.term_width", std::to_string(width));
+    config_.set("system.term_height", std::to_string(height));
+
     std::cout << "\033[2J\033[H";
 
     if (locked_) {
@@ -378,13 +457,21 @@ void TerminalUI::handleInput() {
     } else if (mode_ == InputMode::COMMAND) {
         if (ch == 10 || ch == 13) {
             if (!commandLine_.empty()) {
+                if (snippets_.count(commandLine_)) commandLine_ = snippets_[commandLine_];
                 commandHistory_.push_back(commandLine_);
                 historyIndex_ = -1;
                 std::ofstream hfile("data/cmd_history.txt", std::ios::app);
                 hfile << commandLine_ << "\n";
                 if (recordingMacro_ && commandLine_ != "macro_stop") macroBuffer_.push_back(commandLine_);
             }
-            if (commands_.count(commandLine_)) commands_[commandLine_]();
+            if (commands_.count(commandLine_)) {
+                if (hasPermission(commandLine_)) {
+                    logAction("EXEC: " + commandLine_);
+                    commands_[commandLine_]();
+                } else {
+                    addNotification("Permission Denied: " + commandLine_, Severity::CRITICAL);
+                }
+            }
             mode_ = InputMode::NORMAL; commandLine_.clear();
         } else if (ch == 127 || ch == 8) { if (!commandLine_.empty()) commandLine_.pop_back(); else mode_ = InputMode::NORMAL; }
         else if (ch == 27) {

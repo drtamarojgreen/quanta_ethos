@@ -43,13 +43,34 @@ int main(int argc, char* argv[]) {
     ui.addView(std::make_unique<ProgressView>(pipeline));
     ui.addView(std::make_unique<PluginsMenuView>());
     ui.addView(std::make_unique<DataAnalysisMenuView>());
+    ui.addView(std::make_unique<DiffViewer>());
+    ui.addView(std::make_unique<EmbeddedEditorView>());
+    ui.addView(std::make_unique<WorkflowReviewView>());
+    ui.addView(std::make_unique<SimulationView>());
+    ui.addView(std::make_unique<MaintenanceView>());
+    ui.addView(std::make_unique<AnomalyDetectorView>());
+    ui.addView(std::make_unique<TreeExplorerView>());
+    ui.addView(std::make_unique<ObservabilityView>());
+    ui.addView(std::make_unique<AlertCenterView>());
+    ui.addView(std::make_unique<VirtualListView>());
+    ui.addView(std::make_unique<AuditTrailView>());
+    ui.addView(std::make_unique<ProfileManagerView>());
     ui.addView(std::make_unique<DataGridView>());
+    ui.addView(std::make_unique<SavedQueriesView>());
     ui.addView(std::make_unique<PluginMarketplaceView>());
     ui.addView(std::make_unique<ChangelogView>());
     ui.addView(std::make_unique<IncidentTimelineView>(monitor));
     ui.addView(std::make_unique<UserAnalyticsView>());
+    ui.addView(std::make_unique<ConfigMigrationView>());
+    ui.addView(std::make_unique<OnboardingTutorialView>());
+    ui.addView(std::make_unique<RecentScreensView>(ui));
+    ui.addView(std::make_unique<NotificationHistoryView>(ui));
+    ui.addView(std::make_unique<LocalizationView>());
+    ui.addView(std::make_unique<AccessibilityView>());
+    ui.addView(std::make_unique<StartupProfilerView>());
+    ui.addView(std::make_unique<TermDiagnosticsView>());
 
-    config.set("system.view_count", "16");
+    config.set("system.view_count", "37");
 
     ui.run();
 

@@ -9,6 +9,7 @@
 #include "terminal_view.h"
 #include "user_settings.h"
 #include "logic/config_engine.h"
+#include "logic/async_engine.h"
 #include "model/health_monitor.h"
 
 enum class InputMode {
@@ -43,7 +44,7 @@ struct Pane {
 
 class TerminalUI {
 public:
-    TerminalUI(ConfigEngine& config, UserSettings& settings, HealthMonitor& monitor);
+    TerminalUI(ConfigEngine& config, UserSettings& settings, HealthMonitor& monitor, AsyncPipeline& pipeline);
     void run();
     void addView(std::unique_ptr<ITerminalView> view);
     void registerCommand(const std::string& name, std::function<void()> action);
@@ -64,6 +65,7 @@ private:
     ConfigEngine& config_;
     UserSettings& settings_;
     HealthMonitor& monitor_;
+    AsyncPipeline& pipeline_;
     std::vector<std::unique_ptr<ITerminalView>> views_;
     std::map<std::string, std::string> explanations_;
     int activeViewIndex_ = 0;
@@ -83,6 +85,8 @@ private:
     std::string commandLine_;
     std::vector<std::string> commandHistory_;
     int historyIndex_ = -1;
+    bool recordingMacro_ = false;
+    std::vector<std::string> macroBuffer_;
     std::map<std::string, std::function<void()>> commands_;
     std::vector<Notification> notifications_;
 
@@ -91,6 +95,7 @@ public:
     int getCommandCount() const { return commands_.size(); }
     int getActiveWorkspace() const { return activeWorkspace_; }
     int getNotificationCount() const { return notifications_.size(); }
+    int getMacroSize() const { return macroBuffer_.size(); }
     InputMode getMode() const { return mode_; }
 
 private:

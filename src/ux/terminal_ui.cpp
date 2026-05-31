@@ -21,8 +21,8 @@
 #include <fcntl.h>
 #endif
 
-TerminalUI::TerminalUI(ConfigEngine& config, UserSettings& settings, HealthMonitor& monitor)
-    : config_(config), settings_(settings), monitor_(monitor) {
+TerminalUI::TerminalUI(ConfigEngine& config, UserSettings& settings, HealthMonitor& monitor, AsyncPipeline& pipeline)
+    : config_(config), settings_(settings), monitor_(monitor), pipeline_(pipeline) {
     loadExplanations();
     updateTheme();
 
@@ -59,6 +59,12 @@ TerminalUI::TerminalUI(ConfigEngine& config, UserSettings& settings, HealthMonit
             std::filesystem::remove_all("data/logs");
             std::filesystem::remove_all("data/exports");
         };
+    });
+    registerCommand("macro_record", [this]() { recordingMacro_ = true; macroBuffer_.clear(); addNotification("Macro Recording Started", Severity::INFO); });
+    registerCommand("macro_stop", [this]() { recordingMacro_ = false; addNotification("Macro Recording Stopped", Severity::INFO); });
+    registerCommand("macro_play", [this]() {
+        for (const auto& cmd : macroBuffer_) { if (commands_.count(cmd)) commands_[cmd](); }
+        addNotification("Macro Replayed", Severity::INFO);
     });
 
     // Persistent History Load
@@ -371,7 +377,13 @@ void TerminalUI::handleInput() {
         else if (!visibleViews.empty()) visibleViews[activeViewIndex_]->handleInput(ch, config_);
     } else if (mode_ == InputMode::COMMAND) {
         if (ch == 10 || ch == 13) {
-            if (!commandLine_.empty()) { commandHistory_.push_back(commandLine_); historyIndex_ = -1; std::ofstream hfile("data/cmd_history.txt", std::ios::app); hfile << commandLine_ << "\n"; }
+            if (!commandLine_.empty()) {
+                commandHistory_.push_back(commandLine_);
+                historyIndex_ = -1;
+                std::ofstream hfile("data/cmd_history.txt", std::ios::app);
+                hfile << commandLine_ << "\n";
+                if (recordingMacro_ && commandLine_ != "macro_stop") macroBuffer_.push_back(commandLine_);
+            }
             if (commands_.count(commandLine_)) commands_[commandLine_]();
             mode_ = InputMode::NORMAL; commandLine_.clear();
         } else if (ch == 127 || ch == 8) { if (!commandLine_.empty()) commandLine_.pop_back(); else mode_ = InputMode::NORMAL; }

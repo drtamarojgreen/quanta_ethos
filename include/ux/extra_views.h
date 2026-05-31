@@ -231,3 +231,130 @@ public:
 
     void handleInput(int input, ConfigEngine& config) override {}
 };
+
+class IncidentTimelineView : public ITerminalView {
+public:
+    IncidentTimelineView(HealthMonitor& monitor) : monitor_(monitor) {}
+    std::string getTitle() const override { return "Incidents"; }
+    bool isVisible(const ConfigEngine& config) const override { return true; }
+
+    void render(const ConfigEngine& config, int startCol) const override {
+        std::cout << "\033[1mIncident Timeline\033[0m\n";
+        auto history = monitor_.getHistory();
+        int line = 2;
+        for (auto it = history.rbegin(); it != history.rend(); ++it) {
+            std::cout << "\033[" << line++ << ";" << startCol << "H"
+                      << "Latency: " << it->latency_ms << "ms | Health: "
+                      << (it->latency_ms > 100 ? "CRITICAL" : "OK") << "\n";
+            if (line > 8) break;
+        }
+        if (history.empty()) std::cout << "\033[2;" << startCol << "HNo incidents recorded.\n";
+        std::cout << "\033[10;" << startCol << "H[R] Refresh Timeline";
+    }
+
+    void handleInput(int input, ConfigEngine& config) override {}
+private:
+    HealthMonitor& monitor_;
+};
+
+class UserAnalyticsView : public ITerminalView {
+public:
+    std::string getTitle() const override { return "Analytics"; }
+    bool isVisible(const ConfigEngine& config) const override { return true; }
+
+    void render(const ConfigEngine& config, int startCol) const override {
+        std::cout << "\033[1mUser Analytics & Telemetry\033[0m\n";
+        bool optIn = config.get("user.telemetry", "false") == "true";
+        std::cout << "\033[2;" << startCol << "HTelemetry Opt-In: " << (optIn ? "[ON]" : "[OFF]") << "\n";
+        std::cout << "\033[4;" << startCol << "HUsage Stats:\n";
+        std::cout << "\033[5;" << startCol << "H- Session Time: 12m\n";
+        std::cout << "\033[6;" << startCol << "H- Commands Run: 45\n";
+        std::cout << "\033[8;" << startCol << "H[T] Toggle Telemetry";
+    }
+
+    void handleInput(int input, ConfigEngine& config) override {
+        if (input == 't' || input == 'T') {
+            bool optIn = config.get("user.telemetry", "false") == "true";
+            config.set("user.telemetry", optIn ? "false" : "true");
+        }
+    }
+};
+
+class DataGridView : public ITerminalView {
+public:
+    std::string getTitle() const override { return "Data Grid"; }
+    bool isVisible(const ConfigEngine& config) const override { return true; }
+
+    DataGridView() {
+        data_ = {
+            {"Core", "Active", "12ms"},
+            {"Ethos", "Active", "45ms"},
+            {"Model", "Standby", "0ms"},
+            {"IO", "Busy", "89ms"},
+            {"Security", "Active", "5ms"}
+        };
+    }
+
+    void render(const ConfigEngine& config, int startCol) const override {
+        std::cout << "\033[1mResource Monitor Grid\033[0m\n";
+        std::cout << "\033[2;" << startCol << "H" << "\033[4mName       | Status   | Latency\033[0m\n";
+
+        int line = 3;
+        for (const auto& row : data_) {
+            std::cout << "\033[" << line++ << ";" << startCol << "H"
+                      << std::left << std::setw(10) << row[0] << " | "
+                      << std::left << std::setw(8) << row[1] << " | " << row[2] << "\n";
+        }
+        std::cout << "\033[10;" << startCol << "H[S] Sort by Latency | [R] Reset";
+    }
+
+    void handleInput(int input, ConfigEngine& config) override {
+        if (input == 's' || input == 'S') {
+            std::sort(data_.begin(), data_.end(), [](const auto& a, const auto& b) {
+                return std::stoi(a[2]) > std::stoi(b[2]);
+            });
+        } else if (input == 'r' || input == 'R') {
+            data_ = {{"Core", "Active", "12ms"}, {"Ethos", "Active", "45ms"}, {"Model", "Standby", "0ms"}, {"IO", "Busy", "89ms"}, {"Security", "Active", "5ms"}};
+        }
+    }
+
+private:
+    std::vector<std::vector<std::string>> data_;
+};
+
+class PluginMarketplaceView : public ITerminalView {
+public:
+    std::string getTitle() const override { return "Marketplace"; }
+    bool isVisible(const ConfigEngine& config) const override { return true; }
+
+    void render(const ConfigEngine& config, int startCol) const override {
+        std::cout << "\033[1mPlugin Marketplace\033[0m\n";
+        std::cout << "\033[2;" << startCol << "H1. SQL Explorer [Installed]\n";
+        std::cout << "\033[3;" << startCol << "H2. Redis Visualizer [Available]\n";
+        std::cout << "\033[4;" << startCol << "H3. K8s Dashboard [Available]\n";
+        std::cout << "\033[6;" << startCol << "HStatus: " << status_ << "\n";
+        std::cout << "\033[8;" << startCol << "H[2-3] Install Plugin";
+    }
+
+    void handleInput(int input, ConfigEngine& config) override {
+        if (input == '2') status_ = "Installing Redis Visualizer...";
+        else if (input == '3') status_ = "Installing K8s Dashboard...";
+    }
+private:
+    std::string status_ = "Ready";
+};
+
+class ChangelogView : public ITerminalView {
+public:
+    std::string getTitle() const override { return "Changelog"; }
+    bool isVisible(const ConfigEngine& config) const override { return true; }
+
+    void render(const ConfigEngine& config, int startCol) const override {
+        std::cout << "\033[1mRecent Changes\033[0m\n";
+        std::cout << "\033[2;" << startCol << "H- v1.2: Added Modal Architecture\n";
+        std::cout << "\033[3;" << startCol << "H- v1.1: Improved ANSI Rendering\n";
+        std::cout << "\033[4;" << startCol << "H- v1.0: Initial Release\n";
+    }
+
+    void handleInput(int input, ConfigEngine& config) override {}
+};

@@ -38,3 +38,7 @@
 - [x] SIP-019: Implement Help Overlay and Power-User Tips.
 - [x] SIP-020: Implement ASCII-only fallback rendering.
 - [x] SIP-021: Verify full feature set with comprehensive SDD Card.
+- [x] SIP-022: Implement Advanced Data Grid with sorting.
+- [x] SIP-023: Implement Plugin Marketplace and Changelog views.
+- [x] SIP-024: Implement Incident Timeline and User Analytics.
+- [x] SIP-025: Implement Macro Recording and Replay system.

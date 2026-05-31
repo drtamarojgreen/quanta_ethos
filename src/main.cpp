@@ -10,6 +10,7 @@
 #include "ux/user_settings.h"
 #include "model/health_monitor.h"
 #include "logic/config_engine.h"
+#include "logic/async_engine.h"
 
 int main(int argc, char* argv[]) {
     ConfigEngine config;
@@ -29,7 +30,8 @@ int main(int argc, char* argv[]) {
     // Launch Terminal UI by default
     UserSettings settings;
     HealthMonitor monitor;
-    TerminalUI ui(config, settings, monitor);
+    AsyncPipeline pipeline(4);
+    TerminalUI ui(config, settings, monitor, pipeline);
     ui.addView(std::make_unique<FileMenuView>());
     ui.addView(std::make_unique<ViewSettingsMenuView>());
     ui.addView(std::make_unique<ExportMenuView>());
@@ -38,11 +40,16 @@ int main(int argc, char* argv[]) {
     ui.addView(std::make_unique<ModelView>());
     ui.addView(std::make_unique<SddCheckerView>());
     ui.addView(std::make_unique<SorrelMenuView>());
-    ui.addView(std::make_unique<ProgressView>());
+    ui.addView(std::make_unique<ProgressView>(pipeline));
     ui.addView(std::make_unique<PluginsMenuView>());
     ui.addView(std::make_unique<DataAnalysisMenuView>());
+    ui.addView(std::make_unique<DataGridView>());
+    ui.addView(std::make_unique<PluginMarketplaceView>());
+    ui.addView(std::make_unique<ChangelogView>());
+    ui.addView(std::make_unique<IncidentTimelineView>(monitor));
+    ui.addView(std::make_unique<UserAnalyticsView>());
 
-    config.set("system.view_count", "11");
+    config.set("system.view_count", "16");
 
     ui.run();
 

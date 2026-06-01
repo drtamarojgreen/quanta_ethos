@@ -19,3 +19,33 @@
 - [x] SIP-004: Refactor existing cards to Green Syntax.
 - [x] SIP-005: Refactor fact files to strict syntax.
 - [x] SIP-006: Verify system with updated SDD tools.
+
+## Glia TUI Enhancements - Phase II
+- [x] SIP-007: Implement Modal Input Architecture (Normal, Command, Insert).
+- [x] SIP-008: Implement Always-Visible Status Bar with mode indicators.
+- [x] SIP-009: Implement Global Command Palette with fuzzy actions.
+- [x] SIP-010: Support Vim-style modal keybindings (hjkl).
+- [x] SIP-011: Verify TUI enhancements with SDD card.
+
+## Glia TUI Enhancements - Phase III (Layout, Feedback, Customization)
+- [x] SIP-012: Define and Render Split-Pane Layout Presets.
+- [x] SIP-013: Implement Workspace Tabs and Breadcrumb Navigation.
+- [x] SIP-014: Implement Contextual Help and Toast Notification System.
+- [x] SIP-015: Implement Progress Center and Remappable Keybindings.
+- [x] SIP-016: Implement Accessibility Themes and Typography Density Controls.
+- [x] SIP-017: Implement Security Controls (PIN Lock, Destructive Double-Confirm).
+- [x] SIP-018: Implement Data Export System (MD, CSV, JSON).
+- [x] SIP-019: Implement Help Overlay and Power-User Tips.
+- [x] SIP-020: Implement ASCII-only fallback rendering.
+- [x] SIP-021: Verify full feature set with comprehensive SDD Card.
+- [x] SIP-022: Implement Advanced Data Grid with sorting.
+- [x] SIP-023: Implement Plugin Marketplace and Changelog views.
+- [x] SIP-024: Implement Incident Timeline and User Analytics.
+- [x] SIP-025: Implement Macro Recording and Replay system.
+- [x] SIP-026: Implement Interaction Services (Undo, Clipboard, Snippets).
+- [x] SIP-027: Implement Advanced Visualization (Tree, Charts, paginated lists).
+- [x] SIP-028: Implement Enterprise Features (RBAC, Audit, Profiles).
+- [x] SIP-029: Implement Environment & Accessibility (i18n, A11y, Responsive).
+- [x] SIP-030: Implement UX Polish (Onboarding, Recent History).
+- [x] SIP-031: Implement Advanced Workflow (Editors, Workflow Review).
+- [x] SIP-032: Implement Intelligence & Maintenance (Simulation, Anomalies, Migration).

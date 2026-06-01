@@ -1,4 +1,5 @@
 #include "ux/terminal_ui.h"
+#include "ux/context_help.h"
 #include <iostream>
 #include <fstream>
 #include <regex>
@@ -6,6 +7,10 @@
 #include <iterator>
 #include <vector>
 #include <cstdio>
+#include <chrono>
+#include <cctype>
+#include <map>
+#include <iomanip>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -14,15 +19,139 @@
 #include <termios.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/ioctl.h>
 #endif
 
-TerminalUI::TerminalUI(ConfigEngine& config) : config_(config) {
+TerminalUI::TerminalUI(ConfigEngine& config, UserSettings& settings, HealthMonitor& monitor, AsyncPipeline& pipeline)
+    : config_(config), settings_(settings), monitor_(monitor), pipeline_(pipeline) {
     loadExplanations();
     updateTheme();
+
+    // Register basic commands
+    registerCommand("quit", [this]() { running_ = false; });
+    registerCommand("theme_emerald", [this]() { config_.set("ui.theme", "emerald"); updateTheme(); });
+    registerCommand("theme_amber", [this]() { config_.set("ui.theme", "amber"); updateTheme(); });
+    registerCommand("theme_hc", [this]() { config_.set("ui.theme", "high_contrast"); updateTheme(); });
+    registerCommand("theme_cb", [this]() { config_.set("ui.theme", "colorblind_safe"); updateTheme(); });
+    registerCommand("theme_default", [this]() { config_.set("ui.theme", "default"); updateTheme(); });
+    registerCommand("help", [this]() { cheatSheetOpen_ = true; });
+    registerCommand("unicode_on", [this]() { config_.set("ui.unicode", "true"); });
+    registerCommand("unicode_off", [this]() { config_.set("ui.unicode", "false"); });
+
+    // Layout commands
+    registerCommand("layout_default", [this]() { layout_ = LayoutPreset::DEFAULT; });
+    registerCommand("layout_grid", [this]() { layout_ = LayoutPreset::GRID; });
+    registerCommand("layout_focus", [this]() { layout_ = LayoutPreset::FOCUS; });
+
+    // Workspace commands
+    for (int i = 0; i < 4; ++i) {
+        registerCommand("ws" + std::to_string(i+1), [this, i]() { activeWorkspace_ = i; });
+    }
+
+    // Typography commands
+    registerCommand("density_dense", [this]() { config_.set("ui.density", "dense"); });
+    registerCommand("density_comfortable", [this]() { config_.set("ui.density", "comfortable"); });
+
+    // Security commands
+    registerCommand("lock", [this]() { locked_ = true; pinAttempt_.clear(); });
+    registerCommand("wipe_data", [this]() {
+        confirmPending_ = true;
+        pendingAction_ = []() {
+            std::filesystem::remove_all("data/logs");
+            std::filesystem::remove_all("data/exports");
+        };
+    });
+    registerCommand("macro_record", [this]() { recordingMacro_ = true; macroBuffer_.clear(); addNotification("Macro Recording Started", Severity::INFO); });
+    registerCommand("macro_stop", [this]() { recordingMacro_ = false; addNotification("Macro Recording Stopped", Severity::INFO); });
+    registerCommand("macro_play", [this]() {
+        for (const auto& cmd : macroBuffer_) { if (commands_.count(cmd)) commands_[cmd](); }
+        addNotification("Macro Replayed", Severity::INFO);
+    });
+    registerCommand("dry_run", [this]() {
+        config_.set("system.dry_run", "true");
+        addNotification("Dry-Run Mode Enabled", Severity::WARNING);
+    });
+    registerCommand("undo", [this]() { undo(); });
+    registerCommand("redo", [this]() { redo(); });
+    registerCommand("clip_list", [this]() {
+        std::string list = "Clipboard: ";
+        for (const auto& c : clipboardRing_) list += "[" + c + "] ";
+        addNotification(list, Severity::INFO);
+    });
+
+    // Snippets
+    snippets_["gc"] = "layout_grid";
+    snippets_["fs"] = "layout_focus";
+
+    // Persistent History Load
+    std::ifstream hfile("data/cmd_history.txt");
+    std::string hline;
+    while (std::getline(hfile, hline)) commandHistory_.push_back(hline);
 }
 
 void TerminalUI::addView(std::unique_ptr<ITerminalView> view) {
     views_.push_back(std::move(view));
+}
+
+void TerminalUI::registerCommand(const std::string& name, std::function<void()> action) {
+    commands_[name] = action;
+}
+
+void TerminalUI::addNotification(const std::string& message, Severity severity) {
+    Notification n = {message, severity, std::chrono::system_clock::now()};
+    notifications_.push_back(n);
+    notificationHistory_.push_back(n);
+    if (notifications_.size() > 5) notifications_.erase(notifications_.begin());
+    if (notificationHistory_.size() > 100) notificationHistory_.erase(notificationHistory_.begin());
+}
+
+void TerminalUI::jumpTo(int index) {
+    if (index >= 0 && index < (int)views_.size()) {
+        activeViewIndex_ = index;
+        recentScreens_.push_back(index);
+        if (recentScreens_.size() > 10) recentScreens_.erase(recentScreens_.begin());
+    }
+}
+
+void TerminalUI::addBookmark(int index) {
+    if (index >= 0 && index < (int)views_.size()) bookmarks_.push_back(index);
+}
+
+void TerminalUI::pushUndo(std::function<void()> undoAction) {
+    undoStack_.push_back(undoAction);
+    redoStack_.clear();
+}
+
+void TerminalUI::undo() {
+    if (undoStack_.empty()) return;
+    auto action = undoStack_.back();
+    undoStack_.pop_back();
+    action();
+    addNotification("Undo performed", Severity::INFO);
+}
+
+void TerminalUI::redo() {
+    addNotification("Redo not implemented in this sip", Severity::WARNING);
+}
+
+void TerminalUI::addToClipboard(const std::string& text) {
+    clipboardRing_.push_back(text);
+    if (clipboardRing_.size() > 10) clipboardRing_.erase(clipboardRing_.begin());
+}
+
+std::string TerminalUI::getFromClipboard() {
+    return clipboardRing_.empty() ? "" : clipboardRing_.back();
+}
+
+bool TerminalUI::hasPermission(const std::string& cmd) {
+    if (userRole_ == "admin") return true;
+    if (cmd == "quit" || cmd == "help") return true;
+    return false;
+}
+
+void TerminalUI::logAction(const std::string& action) {
+    auditLog_.push_back(action);
+    if (auditLog_.size() > 50) auditLog_.erase(auditLog_.begin());
 }
 
 void TerminalUI::loadExplanations() {
@@ -30,7 +159,6 @@ void TerminalUI::loadExplanations() {
     if (!file.is_open()) return;
 
     std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    // Simple regex to extract title and explanation
     std::regex stepRegex("<Step title=\"([^\"]*)\">\\s*<Explanation>([\\s\\S]*?)</Explanation>");
     
     auto begin = std::sregex_iterator(content.begin(), content.end(), stepRegex);
@@ -51,6 +179,14 @@ void TerminalUI::updateTheme() {
         colorHeader_ = "\033[1;30;43m";
         colorActive_ = "\033[1;37;41m";
         colorAccent_ = "\033[1;33m";
+    } else if (theme == "high_contrast") {
+        colorHeader_ = "\033[1;37;40m";
+        colorActive_ = "\033[1;30;47m";
+        colorAccent_ = "\033[1;37m";
+    } else if (theme == "colorblind_safe") {
+        colorHeader_ = "\033[1;37;44m"; // Blue
+        colorActive_ = "\033[1;30;43m"; // Yellow
+        colorAccent_ = "\033[1;36m"; // Cyan
     } else { // default
         colorHeader_ = "\033[1;37;44m";
         colorActive_ = "\033[1;30;47m";
@@ -60,77 +196,209 @@ void TerminalUI::updateTheme() {
 
 void TerminalUI::drawLayout() {
     updateTheme();
-    // Clear screen
+
+    // Responsive Layout - Detect Size
+    int width = 80; int height = 24;
+#ifndef _WIN32
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+    width = w.ws_col; height = w.ws_row;
+#endif
+    config_.set("system.term_width", std::to_string(width));
+    config_.set("system.term_height", std::to_string(height));
+
     std::cout << "\033[2J\033[H";
 
-    // Draw header
-    std::cout << colorHeader_ << " PrismQuanta System Configuration \033[0m\n";
+    if (locked_) {
+        std::cout << "\033[10;30H\033[1;37;41m SESSION LOCKED \033[0m";
+        std::cout << "\033[12;25HEnter PIN: " << std::string(pinAttempt_.length(), '*') << "_";
+        std::cout << "\033[22;1H" << colorActive_ << " [Esc] to Quit Session " << "\033[0m";
+        std::cout << std::flush;
+        return;
+    }
 
-    int height = 20;
+    // Draw header with Workspace tabs
+    bool isProd = config_.get("system.env", "dev") == "production";
+    if (isProd) std::cout << "\033[1;37;41m PRODUCTION \033[0m ";
+
+    std::cout << colorHeader_ << " PrismQuanta ";
+    for (int i = 0; i < 4; ++i) {
+        if (i == activeWorkspace_) std::cout << colorActive_ << " WS" << (i + 1) << " \033[0m" << colorHeader_;
+        else std::cout << " [" << (i + 1) << "]";
+    }
+    std::cout << "\033[K\033[0m\n";
+
+    int height = 19;
     int width = 80;
-    int menuWidth = 20; // 25% of 80
-    int contentWidth = 30;
-    int explanationWidth = 30;
+
+    bool dense = config_.get("ui.density", "comfortable") == "dense";
+    if (dense) height = 22; // More lines if dense
 
     std::vector<ITerminalView*> visibleViews;
-    for (auto& v : views_) {
-        if (v->isVisible(config_)) {
-            visibleViews.push_back(v.get());
-        }
-    }
+    for (auto& v : views_) if (v->isVisible(config_)) visibleViews.push_back(v.get());
 
-    if (activeViewIndex_ >= (int)visibleViews.size()) {
-        activeViewIndex_ = visibleViews.empty() ? 0 : (int)visibleViews.size() - 1;
-    }
-
-    // Draw Layout Lines and Menu
-    for (int i = 0; i < height; ++i) {
-        std::cout << "\033[" << (i + 2) << ";1H\033[K";
-        if (i < (int)visibleViews.size()) {
-            if (i == activeViewIndex_) {
-                std::cout << colorActive_ << " > " << visibleViews[i]->getTitle() << " \033[0m";
-            } else {
-                std::cout << "   " << visibleViews[i]->getTitle();
-            }
-        }
-        std::cout << "\033[" << (i + 2) << ";" << menuWidth << "H|";
-        std::cout << "\033[" << (i + 2) << ";" << (menuWidth + contentWidth) << "H|";
-    }
-
-    // Render Middle Panel (Content)
+    // Draw Breadcrumbs
+    std::cout << "\033[1;60H" << colorAccent_ << " Home > ";
     if (!visibleViews.empty()) {
-        std::cout << "\033[2;" << (menuWidth + 2) << "H";
-        visibleViews[activeViewIndex_]->render(config_, menuWidth + 2);
+        if (activeViewIndex_ >= (int)visibleViews.size()) activeViewIndex_ = (int)visibleViews.size() - 1;
+        std::cout << visibleViews[activeViewIndex_]->getTitle();
+    }
+    std::cout << "\033[0m";
 
-        // Render Right Panel (Explanation)
-        std::string title = visibleViews[activeViewIndex_]->getTitle();
-        if (explanations_.count(title)) {
-            std::string exp = explanations_[title];
-            int expCol = menuWidth + contentWidth + 2;
-            std::cout << "\033[2;" << expCol << "H" << colorAccent_ << "\033[1mExplanation:\033[0m";
-            
-            // Simple word wrap for explanation
-            int line = 4;
-            std::string word;
-            std::stringstream ss(exp);
-            std::string currentLine;
-            while (ss >> word) {
-                if (currentLine.length() + word.length() + 1 > (size_t)(explanationWidth - 4)) {
-                    std::cout << "\033[" << line++ << ";" << expCol << "H" << currentLine;
-                    currentLine = word;
-                    if (line > height) break;
-                } else {
-                    if (!currentLine.empty()) currentLine += " ";
-                    currentLine += word;
+    // Contextual Help
+    ContextHelp help;
+    std::string contextualHelp = "";
+    if (!visibleViews.empty()) {
+        contextualHelp = help.getHelp(visibleViews[activeViewIndex_]->getTitle());
+    }
+
+    bool useUnicode = config_.get("ui.unicode", "true") == "true";
+
+    if (!visibleViews.empty()) {
+        if (layout_ == LayoutPreset::DEFAULT) {
+            int menuWidth = menuWidth_;
+            int contentWidth = 30;
+            std::string vLine = useUnicode ? "│" : "|";
+            for (int i = 0; i < height; ++i) {
+                std::cout << "\033[" << (i + 2) << ";1H\033[K";
+                if (i < (int)visibleViews.size()) {
+                    if (i == activeViewIndex_) std::cout << colorActive_ << " > " << visibleViews[i]->getTitle() << " \033[0m";
+                    else std::cout << "   " << visibleViews[i]->getTitle();
                 }
+                std::cout << "\033[" << (i + 2) << ";" << menuWidth << "H" << vLine;
+                std::cout << "\033[" << (i + 2) << ";" << (menuWidth + contentWidth) << "H" << vLine;
             }
-            if (line <= height) {
-                std::cout << "\033[" << line << ";" << expCol << "H" << currentLine;
+            std::cout << "\033[2;" << (menuWidth + 2) << "H";
+            visibleViews[activeViewIndex_]->render(config_, menuWidth + 2);
+
+            std::string title = visibleViews[activeViewIndex_]->getTitle();
+            if (explanations_.count(title)) {
+                std::string exp = explanations_[title];
+                int expCol = menuWidth + contentWidth + 2;
+                std::cout << "\033[2;" << expCol << "H" << colorAccent_ << "\033[1mExplanation:\033[0m";
+                int line = 4;
+                std::string word;
+                std::stringstream ss(exp);
+                std::string currentLine;
+                while (ss >> word) {
+                    if (currentLine.length() + word.length() + 1 > (size_t)(80 - expCol - 2)) {
+                        std::cout << "\033[" << line++ << ";" << expCol << "H" << currentLine;
+                        currentLine = word;
+                        if (line > height) break;
+                    } else {
+                        if (!currentLine.empty()) currentLine += " ";
+                        currentLine += word;
+                    }
+                }
+                if (line <= height) std::cout << "\033[" << line << ";" << expCol << "H" << currentLine;
+            }
+            // Render Contextual Help
+            std::cout << "\033[" << (height-2) << ";" << (menuWidth + contentWidth + 2) << "H" << colorAccent_ << "Context: " << contextualHelp << "\033[0m";
+        } else if (layout_ == LayoutPreset::GRID) {
+            int count = std::min((int)visibleViews.size(), 4);
+            int cellW = width / 2; int cellH = height / 2;
+            for (int i = 0; i < count; ++i) {
+                int r = i / 2; int c = i % 2;
+                int x = c * cellW + 1; int y = r * cellH + 2;
+                std::cout << "\033[" << y << ";" << x << "H" << (i == activeViewIndex_ ? colorActive_ : colorHeader_)
+                          << " " << visibleViews[i]->getTitle() << " \033[0m";
+                std::cout << "\033[" << (y + 1) << ";" << (x + 1) << "H";
+                visibleViews[i]->render(config_, x + 1);
             }
         }
     }
 
-    std::cout << "\033[" << (height + 2) << ";1H" << colorHeader_ << " [Arrows] Navigate | [Q] Quit \033[0m" << std::flush;
+    drawStatusBar();
+    drawCommandPalette();
+    drawNotifications();
+    drawConfirmDialog();
+    drawContextMenu();
+    drawCheatSheet();
+    std::cout << std::flush;
+}
+
+void TerminalUI::drawContextMenu() {
+    if (!contextMenuOpen_ || activeContextMenu_.empty()) return;
+    int startRow = 10; int startCol = 30;
+    std::cout << "\033[" << startRow << ";" << startCol << "H\033[48;5;238m\033[37m CONTEXT MENU \033[0m";
+    for (size_t i = 0; i < activeContextMenu_.size(); ++i) {
+        std::cout << "\033[" << (startRow + i + 1) << ";" << startCol << "H";
+        if (i == (size_t)contextMenuIndex_) std::cout << colorActive_ << " > " << activeContextMenu_[i].label << " \033[0m";
+        else std::cout << "\033[48;5;238m   " << activeContextMenu_[i].label << " \033[0m";
+    }
+}
+
+void TerminalUI::drawConfirmDialog() {
+    if (!confirmPending_) return;
+    std::cout << "\033[10;20H\033[1;37;41m ARE YOU SURE? [Y/N] \033[0m";
+}
+
+void TerminalUI::drawCheatSheet() {
+    if (!cheatSheetOpen_) return;
+    int sr = 5; int sc = 15;
+    std::cout << "\033[" << sr << ";" << sc << "H" << colorHeader_ << " KEYBOARD SHORTCUTS \033[0m";
+    std::cout << "\033[" << (sr+1) << ";" << sc << "H\033[48;5;236m : - Command Mode  \033[0m";
+    std::cout << "\033[" << (sr+2) << ";" << sc << "H\033[48;5;236m j/k - Navigate     \033[0m";
+    std::cout << "\033[" << (sr+3) << ";" << sc << "H\033[48;5;236m m - Context Menu  \033[0m";
+    std::cout << "\033[" << (sr+4) << ";" << sc << "H\033[48;5;236m ? - This Help     \033[0m";
+    std::cout << "\033[" << (sr+5) << ";" << sc << "H\033[48;5;236m q - Quit          \033[0m";
+}
+
+void TerminalUI::drawCommandPalette() {
+    if (mode_ != InputMode::COMMAND) return;
+    int startRow = 5; int startCol = 20;
+    std::cout << "\033[" << startRow << ";" << startCol << "H\033[48;5;236m\033[37m COMMAND PALETTE \033[0m";
+    std::cout << "\033[" << (startRow+1) << ";" << startCol << "H\033[48;5;236m :" << commandLine_ << "_\033[0m";
+    int i = 0;
+    for (const auto& [name, action] : commands_) {
+        bool match = true; size_t last = 0;
+        for (char c : commandLine_) {
+            size_t p = name.find(std::tolower(c), last);
+            if (p == std::string::npos) { match = false; break; }
+            last = p + 1;
+        }
+        if (match) {
+            std::cout << "\033[" << (startRow+2+i) << ";" << startCol << "H\033[48;5;236m  " << name << " \033[0m";
+            if (++i > 5) break;
+        }
+    }
+}
+
+void TerminalUI::drawNotifications() {
+    int startRow = 2; int startCol = 50;
+    auto now = std::chrono::system_clock::now();
+    for (const auto& n : notifications_) {
+        auto age = std::chrono::duration_cast<std::chrono::seconds>(now - n.timestamp).count();
+        if (age > 10) continue;
+        std::string color = (n.severity == Severity::CRITICAL) ? "\033[1;37;41m" : (n.severity == Severity::WARNING ? "\033[1;37;43m" : "\033[1;37;44m");
+        std::cout << "\033[" << startRow++ << ";" << startCol << "H" << color << " " << n.message << " \033[0m";
+    }
+}
+
+void TerminalUI::drawStatusBar() {
+    int statusLine = 21;
+    std::cout << "\033[" << statusLine << ";1H" << colorHeader_;
+    std::string modeStr = (mode_ == InputMode::COMMAND) ? " COMMAND " : (mode_ == InputMode::INSERT ? " INSERT " : " NORMAL ");
+    std::cout << modeStr << " | ";
+    if (mode_ == InputMode::COMMAND) {
+        std::cout << ":" << commandLine_ << " ";
+    } else {
+        auto history = monitor_.getHistory();
+        double lat = history.empty() ? 0.0 : history.back().latency_ms;
+        std::string health = monitor_.isHealthy() ? "OK" : "ERROR";
+        std::cout << "v1.0 | Health: " << health << " | Latency: " << std::fixed << std::setprecision(1) << lat << "ms ";
+    }
+    // Power User Tip
+    static std::vector<std::string> tips = {
+        "Try ':', then type 'layout_grid'",
+        "Press 'm' for context actions",
+        "Use 'j' and 'k' to navigate",
+        "Type ':lock' to secure session",
+        "Use '>' and '<' to resize panes"
+    };
+    auto seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    std::cout << " | Tip: " << tips[(seconds / 10) % tips.size()] << " ";
+    std::cout << "\033[K\033[0m";
 }
 
 void TerminalUI::handleInput() {
@@ -139,71 +407,111 @@ void TerminalUI::handleInput() {
 #else
     int ch = getchar();
 #endif
-
-    std::vector<ITerminalView*> visibleViews;
-    for (auto& v : views_) {
-        if (v->isVisible(config_)) {
-            visibleViews.push_back(v.get());
-        }
+    if (locked_) {
+        std::string pin = config_.get("security.pin", "1234");
+        if (ch == 10 || ch == 13) { if (pinAttempt_ == pin) locked_ = false; pinAttempt_.clear(); }
+        else if (ch == 127 || ch == 8) { if (!pinAttempt_.empty()) pinAttempt_.pop_back(); }
+        else if (std::isdigit(ch)) pinAttempt_ += (char)ch;
+        return;
     }
-
-    if (ch == 'q' || ch == 'Q') {
-        running_ = false;
-    } else if (ch == '\033' || ch == 224) { // ESC or arrow prefix on Windows
-#ifdef _WIN32
-        int next = (ch == 224) ? _getch() : _getch();
-        if (ch == 224) { // Arrow keys
-             switch(next) {
-                case 72: if (activeViewIndex_ > 0) activeViewIndex_--; break; // Up
-                case 80: if (activeViewIndex_ < (int)visibleViews.size() - 1) activeViewIndex_++; break; // Down
+    if (cheatSheetOpen_) { cheatSheetOpen_ = false; return; }
+    if (contextMenuOpen_) {
+        if (ch == 27) { contextMenuOpen_ = false; return; }
+        if (ch == 10 || ch == 13) { if (contextMenuIndex_ < (int)activeContextMenu_.size()) activeContextMenu_[contextMenuIndex_].action(); contextMenuOpen_ = false; return; }
+        if (ch == 'k' || ch == 'K' || ch == 65) { if (contextMenuIndex_ > 0) contextMenuIndex_--; return; }
+        if (ch == 'j' || ch == 'J' || ch == 66) { if (contextMenuIndex_ < (int)activeContextMenu_.size() - 1) contextMenuIndex_++; return; }
+    }
+    if (confirmPending_) {
+        if (ch == 'y' || ch == 'Y') { if (pendingAction_) pendingAction_(); confirmPending_ = false; }
+        else if (ch == 'n' || ch == 'N' || ch == 27) confirmPending_ = false;
+        return;
+    }
+    if (ch == 27) {
+#ifndef _WIN32
+        int flags = fcntl(STDIN_FILENO, F_GETFL, 0); fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
+        int n1 = getchar();
+        if (n1 == '[') {
+            int n2 = getchar(); fcntl(STDIN_FILENO, F_SETFL, flags);
+            if (n2 == 'A') { if (activeViewIndex_ > 0) activeViewIndex_--; return; }
+            if (n2 == 'B') {
+                std::vector<ITerminalView*> vv; for (auto& v : views_) if (v->isVisible(config_)) vv.push_back(v.get());
+                if (activeViewIndex_ < (int)vv.size() - 1) activeViewIndex_++; return;
             }
         }
-#else
-        int next = getchar();
-        if (next == '[') {
-            switch(getchar()) {
-                case 'A': if (activeViewIndex_ > 0) activeViewIndex_--; break;
-                case 'B': if (activeViewIndex_ < (int)visibleViews.size() - 1) activeViewIndex_++; break;
-            }
-        }
+        fcntl(STDIN_FILENO, F_SETFL, flags);
 #endif
-    } else if (!visibleViews.empty() && activeViewIndex_ < (int)visibleViews.size()) {
-        visibleViews[activeViewIndex_]->handleInput(ch, config_);
+        mode_ = InputMode::NORMAL; commandLine_.clear(); return;
+    }
+    std::vector<ITerminalView*> visibleViews; for (auto& v : views_) if (v->isVisible(config_)) visibleViews.push_back(v.get());
+    if (mode_ == InputMode::NORMAL) {
+        if (ch == settings_.getKeybinding("command")) { mode_ = InputMode::COMMAND; commandLine_.clear(); }
+        else if (ch == 'm' || ch == 'M') { if (!visibleViews.empty()) { activeContextMenu_ = visibleViews[activeViewIndex_]->getContextMenu(); if (!activeContextMenu_.empty()) { contextMenuOpen_ = true; contextMenuIndex_ = 0; } } }
+        else if (ch == 'i' || ch == 'I') { mode_ = InputMode::INSERT; }
+        else if (ch == '?') { cheatSheetOpen_ = true; }
+        else if (ch == settings_.getKeybinding("nav_down") || ch == std::tolower(settings_.getKeybinding("nav_down"))) { if (activeViewIndex_ < (int)visibleViews.size() - 1) activeViewIndex_++; }
+        else if (ch == settings_.getKeybinding("nav_up") || ch == std::tolower(settings_.getKeybinding("nav_up"))) { if (activeViewIndex_ > 0) activeViewIndex_--; }
+        else if (ch == 'L' || ch == '>') { if (menuWidth_ < 40) menuWidth_++; }
+        else if (ch == 'H' || ch == '<') { if (menuWidth_ > 10) menuWidth_--; }
+        else if (ch == settings_.getKeybinding("quit") || ch == std::tolower(settings_.getKeybinding("quit"))) { running_ = false; }
+        else if (!visibleViews.empty()) visibleViews[activeViewIndex_]->handleInput(ch, config_);
+    } else if (mode_ == InputMode::COMMAND) {
+        if (ch == 10 || ch == 13) {
+            if (!commandLine_.empty()) {
+                if (snippets_.count(commandLine_)) commandLine_ = snippets_[commandLine_];
+                commandHistory_.push_back(commandLine_);
+                historyIndex_ = -1;
+                std::ofstream hfile("data/cmd_history.txt", std::ios::app);
+                hfile << commandLine_ << "\n";
+                if (recordingMacro_ && commandLine_ != "macro_stop") macroBuffer_.push_back(commandLine_);
+            }
+            if (commands_.count(commandLine_)) {
+                if (hasPermission(commandLine_)) {
+                    logAction("EXEC: " + commandLine_);
+                    commands_[commandLine_]();
+                } else {
+                    addNotification("Permission Denied: " + commandLine_, Severity::CRITICAL);
+                }
+            }
+            mode_ = InputMode::NORMAL; commandLine_.clear();
+        } else if (ch == 127 || ch == 8) { if (!commandLine_.empty()) commandLine_.pop_back(); else mode_ = InputMode::NORMAL; }
+        else if (ch == 27) {
+            int n1 = getchar();
+            if (n1 == '[') {
+                int n2 = getchar();
+                if (n2 == 'A') { // Up
+                    if (!commandHistory_.empty()) {
+                        if (historyIndex_ == -1) historyIndex_ = commandHistory_.size() - 1;
+                        else if (historyIndex_ > 0) historyIndex_--;
+                        commandLine_ = commandHistory_[historyIndex_];
+                    }
+                } else if (n2 == 'B') { // Down
+                    if (historyIndex_ != -1 && historyIndex_ < (int)commandHistory_.size() - 1) {
+                        historyIndex_++;
+                        commandLine_ = commandHistory_[historyIndex_];
+                    } else {
+                        historyIndex_ = -1;
+                        commandLine_.clear();
+                    }
+                }
+            } else {
+                mode_ = InputMode::NORMAL;
+                commandLine_.clear();
+            }
+        } else if (std::isprint(ch)) commandLine_ += (char)ch;
+    } else if (mode_ == InputMode::INSERT) {
+        if (!visibleViews.empty()) visibleViews[activeViewIndex_]->handleInput(ch, config_);
     }
 }
 
 void TerminalUI::run() {
-#ifdef _WIN32
-    HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
-    DWORD mode;
-    GetConsoleMode(hStdin, &mode);
-    DWORD oldMode = mode;
-    mode &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
-    SetConsoleMode(hStdin, mode);
-#else
-    struct termios oldt, newt;
-    tcgetattr(STDIN_FILENO, &oldt);
-    newt = oldt;
-    newt.c_lflag &= ~(ICANON | ECHO);
-    newt.c_cc[VMIN] = 1;
-    newt.c_cc[VTIME] = 0;
-    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+#ifndef _WIN32
+    struct termios oldt, newt; tcgetattr(STDIN_FILENO, &oldt); newt = oldt;
+    newt.c_lflag &= ~(ICANON | ECHO); tcsetattr(STDIN_FILENO, TCSANOW, &newt);
 #endif
-
-    // Hide cursor
-    std::cout << "\033[?25l";
-
-    while (running_) {
-        drawLayout();
-        handleInput();
-    }
-
-    // Show cursor
-    std::cout << "\033[?25h";
-
-#ifdef _WIN32
-    SetConsoleMode(hStdin, oldMode);
-#else
+    std::cout << "\033[?1000h\033[?1003h\033[?1015h\033[?1006h\033[?25l";
+    while (running_) { drawLayout(); handleInput(); }
+    std::cout << "\033[?1000l\033[?1003l\033[?1015l\033[?1006l\033[?25h";
+#ifndef _WIN32
     tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
 #endif
 }

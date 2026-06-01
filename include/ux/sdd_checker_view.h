@@ -10,6 +10,7 @@
 #include <cctype>
 #include <future>
 #include <algorithm>
+#include <regex>
 
 class SddCheckerView : public ITerminalView {
 public:
@@ -21,6 +22,7 @@ public:
     void render(const ConfigEngine& config, int startCol) const override {
         std::cout << "\033[1mSORREL Adherence Checker\033[0m\n";
         std::cout << "\033[2;" << startCol << "HRepo URL: " << repoUrl_ << "\n";
+        std::cout << "\033[3;" << startCol << "HFilter:    " << filter_ << "\n";
         std::cout << "\033[4;" << startCol << "H------------------------------\n";
 
         if (checking_) {
@@ -33,25 +35,38 @@ public:
         }
 
         int line = 5;
+        std::regex filterRegex;
+        bool hasFilter = !filter_.empty();
+        if (hasFilter) {
+            try { filterRegex = std::regex(filter_, std::regex_constants::icase); }
+            catch (...) { hasFilter = false; }
+        }
+
         for (const auto& outLine : output_) {
+            if (hasFilter && !std::regex_search(outLine, filterRegex)) continue;
+
             std::string displayLine = outLine;
             if (displayLine.length() > 55) displayLine = displayLine.substr(0, 52) + "...";
             std::cout << "\033[" << line++ << ";" << startCol << "H" << displayLine << "\n";
             if (line > 18) break;
         }
 
-        std::cout << "\033[20;" << startCol << "H[Enter] Run Check | [Backspace] Clear";
+        std::cout << "\033[20;" << startCol << "H[Enter] Run | [F] Filter | [B] Clear URL";
     }
 
     void handleInput(int input, ConfigEngine& config) override {
         if (checking_) return;
 
-        if (input == 10 || input == 13) {
-            if (!repoUrl_.empty()) startCheck();
-        } else if (input == 127 || input == 8) {
-            if (!repoUrl_.empty()) repoUrl_.pop_back();
-        } else if (std::isprint(input)) {
-            repoUrl_ += (char)input;
+        if (mode_ == 0) { // URL Mode
+            if (input == 10 || input == 13) { if (!repoUrl_.empty()) startCheck(); }
+            else if (input == 127 || input == 8) { if (!repoUrl_.empty()) repoUrl_.pop_back(); }
+            else if (input == 'f' || input == 'F') mode_ = 1;
+            else if (input == 'b' || input == 'B') repoUrl_.clear();
+            else if (std::isprint(input)) repoUrl_ += (char)input;
+        } else if (mode_ == 1) { // Filter Mode
+            if (input == 10 || input == 13 || input == 27) mode_ = 0;
+            else if (input == 127 || input == 8) { if (!filter_.empty()) filter_.pop_back(); }
+            else if (std::isprint(input)) filter_ += (char)input;
         }
     }
 
@@ -86,6 +101,8 @@ private:
     }
 
     std::string repoUrl_ = "https://github.com/drtamarojgreen/quanta_glia";
+    std::string filter_ = "";
+    int mode_ = 0; // 0: URL, 1: Filter
     mutable std::vector<std::string> output_;
     mutable bool checking_ = false;
     mutable std::future<std::vector<std::string>> checkFuture_;

@@ -1,6 +1,8 @@
 #pragma once
 
 #include "ux/terminal_view.h"
+#include "logic/async_engine.h"
+#include "model/health_monitor.h"
 #include <iostream>
 
 class CoreEngineView : public ITerminalView {
@@ -25,6 +27,21 @@ public:
             config.set("engine.context_size", std::to_string(config.getInt("engine.context_size") == 2048 ? 4096 : 2048));
         }
     }
+};
+
+class ProgressView : public ITerminalView {
+public:
+    ProgressView(AsyncPipeline& pipeline) : pipeline_(pipeline) {}
+    std::string getTitle() const override { return "Progress Center"; }
+    bool isVisible(const ConfigEngine& config) const override { return true; }
+    void render(const ConfigEngine& config, int startCol) const override {
+        std::cout << "\033[1mBackground Tasks\033[0m\n";
+        std::cout << "\033[2;" << startCol << "H- Pipeline State: ACTIVE\n";
+        std::cout << "\033[3;" << startCol << "H- Threads:        " << config.get("system.threads", "4") << "\n";
+    }
+    void handleInput(int input, ConfigEngine& config) override {}
+private:
+    AsyncPipeline& pipeline_;
 };
 
 class EthosView : public ITerminalView {
